@@ -18,13 +18,23 @@ const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const googleClient = new OAuth2Client(CLIENT_ID);
 
 // Middleware
-// Replace or update your existing CORS configuration
+const allowedOrigins = [
+    'https://quizapp-fe.vercel.app',
+    'http://localhost:3000' // Add your local development frontend URL if needed
+];
+
 app.use(cors({
-    origin: 'http://localhost:5173', // Your frontend URL
+    origin: function(origin, callback) {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
-  }));
+}));
 app.use(express.json());
 
 
@@ -46,7 +56,6 @@ app.use('/api/email', require('./routes/sendMailRoutes'));
 app.get('/', (req, res) => {
     res.send('API running');
   });
-
 
 
 
