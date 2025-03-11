@@ -44,12 +44,12 @@ app.use(express.json());
 
 
 
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/batches', require('./routes/batchRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));  
-app.use('/api/export', require('./routes/getCsvRoutes'));
-app.use('/api/invitations', require('./routes/invitation'));
-app.use('/api/email', require('./routes/sendMailRoutes'));
+app.use('/api/auth', require('../routes/authRoutes'));
+app.use('/api/batches', require('../routes/batchRoutes'));
+app.use('/api/users', require('../routes/userRoutes'));  
+app.use('/api/export', require('../routes/getCsvRoutes'));
+app.use('/api/invitations', require('../routes/invitation'));
+app.use('/api/email', require('../routes/sendMailRoutes'));
 
 // Routes
 
