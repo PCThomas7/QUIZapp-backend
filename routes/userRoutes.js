@@ -130,4 +130,28 @@ userRouter.get('/',   async (req, res) => {
     }
   });
   
+userRouter.delete('/:id', authenticate, authorizeRoles('Super Admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent Super Admin deletion
+    const userToDelete = await User.findById(id);
+    if (!userToDelete) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (userToDelete.role === 'Super Admin') {
+      return res.status(403).json({ message: 'Super Admin users cannot be deleted' });
+    }
+
+    // Delete user
+    await User.findByIdAndDelete(id);
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+});
+
 module.exports = userRouter;
