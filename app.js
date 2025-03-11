@@ -20,6 +20,7 @@ const googleClient = new OAuth2Client(CLIENT_ID);
 // Middleware
 const allowedOrigins = [
     'https://quizapp-fe.vercel.app',
+    'https://qui-zapp-backend.vercel.app/',
     'http://localhost:3000' // Add your local development frontend URL if needed
 ];
 
