@@ -81,6 +81,269 @@ const userSchema = new mongoose.Schema({
       default: 'Pending'
     }
   });
+  const courseSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    thumbnail: { type: String ,default:null},
+    status: { 
+      type: String, 
+      enum: ['Draft', 'Published'],
+      default: 'Draft'
+    },
+    price: { 
+      type: Number, 
+      default: 0,
+      min: 0
+    },
+    salePrice: { 
+      type: Number, 
+      min: 0
+    },
+    enrolledCount: { 
+      type: Number, 
+      default: 0
+    },
+    createdAt: { 
+      type: Date, 
+      default: Date.now 
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    enableRazorpay: {
+      type: Boolean,
+      default: true
+    }
+  });
+  
+  const sectionSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    order: { type: Number, required: true },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true
+    }
+  });
+  
+  const chapterSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    order: { type: Number, required: true },
+    sectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Section',
+      required: true
+    }
+  });
+  
+  const lessonSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    type: { 
+      type: String, 
+      enum: ['video', 'pdf', 'quiz'],
+      required: true
+    },
+    provider: { 
+      type: String, 
+      enum: ['youtube', 'vimeo', null],
+      default: null
+    },
+    duration: { type: String },
+    content: { type: String, required: true },
+    preview: { 
+      type: Boolean, 
+      default: false
+    },
+    order: { type: Number, required: true },
+    chapterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Chapter',
+      required: true
+    }
+  });
+  
+  const batchCourseSchema = new mongoose.Schema({
+    batchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Batch',
+      required: true
+    },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true
+    },
+    assignedDate: {
+      type: Date,
+      default: Date.now
+    }
+  });
+  
+  const enrollmentSchema = new mongoose.Schema({
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true
+    },
+    enrolledDate: {
+      type: Date,
+      default: Date.now
+    },
+    enrollmentType: {
+      type: String,
+      enum: ['paid', 'batch', 'free'],
+      required: true
+    },
+    transactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction'
+    },
+    expiryDate: {
+      type: Date
+    }
+  });
+  
+  const transactionSchema = new mongoose.Schema({
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course'
+    },
+    paymentId: { type: String },
+    orderId: { type: String },
+    razorpayOrderId: { type: String },
+    razorpayPaymentId: { type: String },
+    razorpaySignature: { type: String },
+    amount: { 
+      type: Number,
+      required: true
+    },
+    currency: { 
+      type: String,
+      default: 'INR'
+    },
+    status: {
+      type: String,
+      enum: ['created', 'authorized', 'captured', 'refunded', 'failed'],
+      default: 'created'
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+  });
+  
+  const quizSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    timeLimit: { type: Number }, // in minutes
+    passingScore: { 
+      type: Number,
+      default: 70
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  });
+  
+  const questionSchema = new mongoose.Schema({
+    question: { type: String, required: true },
+    questionType: { 
+      type: String, 
+      enum: ['multiple-choice', 'single-choice', 'true-false'],
+      required: true
+    },
+    options: [{ type: String }],
+    correctAnswers: [{ type: String }],
+    score: { 
+      type: Number,
+      default: 1
+    },
+    quizId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Quiz',
+      required: true
+    }
+  });
+  
+  const quizAttemptSchema = new mongoose.Schema({
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    quizId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Quiz',
+      required: true
+    },
+    lessonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lesson'
+    },
+    score: { type: Number },
+    passed: { type: Boolean },
+    attemptDate: {
+      type: Date,
+      default: Date.now
+    },
+    timeTaken: { type: Number } // in seconds
+  });
+  
+  const progressTrackingSchema = new mongoose.Schema({
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true
+    },
+    lessonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lesson',
+      required: true
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    progressPercentage: {
+      type: Number,
+      default: 0
+    },
+    lastAccessed: {
+      type: Date,
+      default: Date.now
+    }
+  });
+  
+  const Course = mongoose.model('Course', courseSchema);
+  const Section = mongoose.model('Section', sectionSchema);
+  const Chapter = mongoose.model('Chapter', chapterSchema);
+  const Lesson = mongoose.model('Lesson', lessonSchema);
+  const BatchCourse = mongoose.model('BatchCourse', batchCourseSchema);
+  const Enrollment = mongoose.model('Enrollment', enrollmentSchema);
+  const Transaction = mongoose.model('Transaction', transactionSchema);
+  const Quiz = mongoose.model('Quiz', quizSchema);
+  const Question = mongoose.model('Question', questionSchema);
+  const QuizAttempt = mongoose.model('QuizAttempt', quizAttemptSchema);
+  const ProgressTracking = mongoose.model('ProgressTracking', progressTrackingSchema);
   
   const User = mongoose.model('User', userSchema);
   const Batch = mongoose.model('Batch', batchSchema);
@@ -90,5 +353,17 @@ const userSchema = new mongoose.Schema({
   module.exports = {
     User,
     Batch,
-    Invitation
+    Invitation,
+    Course,
+    Section,
+    Chapter,
+    Lesson,
+    BatchCourse,
+    Enrollment,
+    Transaction,
+    Quiz,
+    Question,
+    QuizAttempt,
+    ProgressTracking
+
   };

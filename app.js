@@ -4,11 +4,13 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
 const cors = require('cors');
-// const csv = require('fast-csv');
-// const xlsx = require('xlsx');
-// const nodemailer = require('nodemailer');
-// const multer = require('multer');
-// const crypto = require('crypto');
+const {authenticate, authorizeRoles} = require('./middleware/authMiddleWare');
+const {Course, Section, Chapter, Lesson, BatchCourse, Enrollment} = require('./db/db');
+const { upload } = require('./utilits/fileupload');
+const { checkCourseAccess } = require('./middleware/courseMiddleWare');
+const fs = require('fs');
+const path = require('path');
+
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +23,7 @@ const googleClient = new OAuth2Client(CLIENT_ID);
 const allowedOrigins = [
     'https://quizapp-fe.vercel.app',
     'https://qui-zapp-backend.vercel.app/',
+    'http://localhost:5173',
     'http://localhost:3000' // Add your local development frontend URL if needed
 ];
 
@@ -51,15 +54,13 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/export', require('./routes/getCsvRoutes'));
 app.use('/api/invitations', require('./routes/invitation'));
 app.use('/api/email', require('./routes/sendMailRoutes'));
+app.use('/api/courses', require('./routes/courseRoutes'));
 
 // Routes
 
 app.get('/', (req, res) => {
     res.send('API running');
   });
-
-
-
 
 
 // Start server
