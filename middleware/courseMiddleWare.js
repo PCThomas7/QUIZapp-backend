@@ -69,3 +69,4 @@ const checkCourseAccess = async (req, res, next) => {
     }
   };
     
+  module.exports = checkCourseAccess;

@@ -55,7 +55,9 @@ app.use('/api/export', require('./routes/getCsvRoutes'));
 app.use('/api/invitations', require('./routes/invitation'));
 app.use('/api/email', require('./routes/sendMailRoutes'));
 app.use('/api/courses', require('./routes/courseRoutes'));
-
+app.use('/api/sections', require('./routes/sectionRoutes'));
+app.use('/api/chapters', require('./routes/chapterRoutes'));
+app.use('/api/lessons', require('./routes/lessonRoutes'));
 // Routes
 
 app.get('/', (req, res) => {

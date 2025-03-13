@@ -1,82 +1,49 @@
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
+
 const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
 const { Course, Section, Chapter, Lesson, Quiz, ProgressTracking, QuizAttempt } = require('../db/db');
 const multer = require('multer');
-const {upload } = require('../utilits/fileupload');
-// Lesson CRUD routes
-router.post('/chapters/:chapterId/lessons', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), upload.single('pdfContent'), async (req, res) => {
-  try {
-    const { chapterId } = req.params;
-    const { title, type, provider, duration, content, preview, order } = req.body;
-    
-    const chapter = await Chapter.findById(chapterId);
-    
-    if (!chapter) {
-      return res.status(404).json({ message: 'Chapter not found' });
+const imagekit = require('../utilits/imagekit');
+
+// Configure multer for memory storage
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
     }
-    
-    // Check authorization
-    const section = await Section.findById(chapter.sectionId);
-    const course = await Course.findById(section.courseId);
-    
-    if (req.user.role !== 'Super Admin' && req.user.role !== 'Admin' && 
-        course.createdBy.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to edit this chapter' });
-    }
-    
-    // Get the max order if not provided
-    let lessonOrder = order;
-    if (!lessonOrder) {
-      const lastLesson = await Lesson.findOne({ chapterId })
-        .sort({ order: -1 });
-      
-      lessonOrder = lastLesson ? lastLesson.order + 1 : 1;
-    }
-    
-    // Create lesson
-    const lesson = new Lesson({
-      title,
-      type,
-      duration,
-      preview: preview === 'true',
-      order: lessonOrder,
-      chapterId
-    });
-    
-    // Set content based on lesson type
-    if (type === 'video') {
-      lesson.provider = provider;
-      lesson.content = content;
-    } else if (type === 'pdf') {
-      if (!req.file) {
-        return res.status(400).json({ message: 'PDF file is required for PDF lesson type' });
-      }
-      
-      lesson.content = `/uploads/pdfs/${req.file.filename}`;
-    } else if (type === 'quiz') {
-      const quiz = await Quiz.findById(content);
-      
-      if (!quiz) {
-        return res.status(400).json({ message: 'Invalid quiz ID' });
-      }
-      
-      lesson.content = content;
-    }
-    
-    await lesson.save();
-    
-    res.status(201).json(lesson);
-  } catch (error) {
-    console.error('Error creating lesson:', error);
-    res.status(500).json({ message: 'Failed to create lesson' });
-  }
 });
 
+// Helper function to upload file to ImageKit
+const uploadToImageKit = async (file, folder) => {
+    try {
+        const response = await imagekit.upload({
+            file: file.buffer.toString('base64'),
+            fileName: `${Date.now()}-${file.originalname}`,
+            folder: folder
+        });
+        return response.url;
+    } catch (error) {
+        console.error('ImageKit upload error:', error);
+        throw new Error('Failed to upload file');
+    }
+};
+
+// Helper function to delete file from ImageKit
+const deleteImageKitFile = async (url) => {
+    if (!url) return;
+    try {
+        const fileId = url.split('/').pop().split('.')[0];
+        await imagekit.deleteFile(fileId);
+    } catch (error) {
+        console.error(`Failed to delete file from ImageKit: ${error.message}`);
+    }
+};
+
+// Lesson CRUD routes
+
 // Update a lesson
-router.put('/lessons/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), upload.single('pdfContent'), async (req, res) => {
+router.put('/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), upload.single('pdfContent'), async (req, res) => {
   try {
     const { lessonId } = req.params;
     const { title, type, provider, duration, content, preview, order } = req.body;
@@ -139,15 +106,13 @@ router.put('/lessons/:lessonId', authenticate, authorizeRoles('Super Admin', 'Ad
     
     // Handle PDF upload if needed
     if (lesson.type === 'pdf' && req.file) {
-      // Delete old PDF if exists
+      // Delete old PDF from ImageKit if exists
       if (lesson.content) {
-        const oldPath = path.join(__dirname, '..', lesson.content);
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+        await deleteImageKitFile(lesson.content);
       }
       
-      lesson.content = `/uploads/pdfs/${req.file.filename}`;
+      // Upload new PDF to ImageKit
+      lesson.content = await uploadToImageKit(req.file, '/lesson-pdfs');
     }
     
     await lesson.save();
@@ -160,7 +125,7 @@ router.put('/lessons/:lessonId', authenticate, authorizeRoles('Super Admin', 'Ad
 });
 
 // Delete a lesson
-router.delete('/lessons/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), async (req, res) => {
+router.delete('/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), async (req, res) => {
   try {
     const { lessonId } = req.params;
     
@@ -180,22 +145,17 @@ router.delete('/lessons/:lessonId', authenticate, authorizeRoles('Super Admin', 
       return res.status(403).json({ message: 'Not authorized to delete this lesson' });
     }
     
-    // Delete PDF file if it's a PDF lesson
+    // Delete PDF file from ImageKit if it's a PDF lesson
     if (lesson.type === 'pdf' && lesson.content) {
-      const pdfPath = path.join(__dirname, '..', lesson.content);
-      if (fs.existsSync(pdfPath)) {
-        fs.unlinkSync(pdfPath);
-      }
+      await deleteImageKitFile(lesson.content);
     }
     
-    // Delete lesson
-    await Lesson.findByIdAndDelete(lessonId);
-    
-    // Delete progress tracking for this lesson
-    await ProgressTracking.deleteMany({ lessonId });
-    
-    // Delete quiz attempts for this lesson
-    await QuizAttempt.deleteMany({ lessonId });
+    // Delete lesson and related data
+    await Promise.all([
+      Lesson.findByIdAndDelete(lessonId),
+      ProgressTracking.deleteMany({ lessonId }),
+      QuizAttempt.deleteMany({ lessonId })
+    ]);
     
     res.json({ message: 'Lesson deleted successfully' });
   } catch (error) {
@@ -203,3 +163,5 @@ router.delete('/lessons/:lessonId', authenticate, authorizeRoles('Super Admin', 
     res.status(500).json({ message: 'Failed to delete lesson' });
   }
 });
+
+module.exports = router;
