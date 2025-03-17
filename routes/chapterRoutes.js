@@ -168,4 +168,28 @@ router.post('/:chapterId/lessons',
     }
 );
 
+
+// Get all lessons for a chapter
+router.get('/chapter/:chapterId', authenticate, async (req, res) => {
+    try {
+      const { chapterId } = req.params;
+      
+      // Check if chapter exists
+      const chapter = await Chapter.findById(chapterId);
+      if (!chapter) {
+        return res.status(404).json({ message: 'Chapter not found' });
+      }
+  
+      // Get lessons
+      const lessons = await Lesson.find({ chapterId })
+        .select('title type duration preview order provider')
+        .sort({ order: 1 });
+  
+      res.json(lessons);
+    } catch (error) {
+      console.error('Error fetching lessons:', error);
+      res.status(500).json({ message: 'Failed to fetch lessons' });
+    }
+  });
+
 module.exports = router;

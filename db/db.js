@@ -82,42 +82,69 @@ const userSchema = new mongoose.Schema({
     }
   });
   const courseSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    description: { type: String },
-    thumbnail: { type: String ,default:null},
-    status: { 
-      type: String, 
-      enum: ['Draft', 'Published'],
-      default: 'Draft'
+    title: {
+        type: String,
+        required: true
     },
-    price: { 
-      type: Number, 
-      default: 0,
-      min: 0
+    description: {
+        type: String
     },
-    salePrice: { 
-      type: Number, 
-      min: 0
+    thumbnail: {
+        type: String
     },
-    enrolledCount: { 
-      type: Number, 
-      default: 0
+    status: {
+        type: String,
+        enum: ['Draft', 'Published', 'Archived'],
+        default: 'Draft'
     },
-    createdAt: { 
-      type: Date, 
-      default: Date.now 
+    price: {
+        type: Number,
+        default: 0,
+        min: 0
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+    salePrice: {
+        type: Number,
+        min: 0
     },
     enableRazorpay: {
-      type: Boolean,
-      default: true
+        type: Boolean,
+        default: true
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    enrolledCount: {
+        type: Number,
+        default: 0
+    },
+    sections: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Section'
+    }],
+    totalLessons: {
+        type: Number,
+        default: 0
+    },
+    totalDuration: {
+        type: Number,
+        default: 0
     }
-  });
-  
-  const sectionSchema = new mongoose.Schema({
+}, {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+});
+
+// Virtual populate for sections
+courseSchema.virtual('courseSections', {
+    ref: 'Section',
+    localField: '_id',
+    foreignField: 'courseId'
+});
+
+const sectionSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String },
     order: { type: Number, required: true },
@@ -193,21 +220,20 @@ const userSchema = new mongoose.Schema({
       ref: 'Course',
       required: true
     },
-    enrolledDate: {
-      type: Date,
-      default: Date.now
-    },
     enrollmentType: {
       type: String,
-      enum: ['paid', 'batch', 'free'],
+      enum: ['free', 'paid', 'batch'],
       required: true
     },
-    transactionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Transaction'
+    status: {
+      type: String,
+      enum: ['Active', 'Expired', 'Cancelled'],
+      default: 'Active'
     },
-    expiryDate: {
-      type: Date
+    expiryDate: Date,
+    enrolledAt: {
+      type: Date,
+      default: Date.now
     }
   });
   
@@ -219,27 +245,32 @@ const userSchema = new mongoose.Schema({
     },
     courseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course'
+      ref: 'Course',
+      required: true
     },
-    paymentId: { type: String },
-    orderId: { type: String },
-    razorpayOrderId: { type: String },
-    razorpayPaymentId: { type: String },
-    razorpaySignature: { type: String },
-    amount: { 
+    orderId: {
+      type: String,
+      required: true
+    },
+    razorpayOrderId: {
+      type: String,
+      required: true
+    },
+    amount: {
       type: Number,
       required: true
     },
-    currency: { 
+    currency: {
       type: String,
       default: 'INR'
     },
     status: {
       type: String,
-      enum: ['created', 'authorized', 'captured', 'refunded', 'failed'],
+      enum: ['created', 'paid', 'failed'],
       default: 'created'
     },
-    timestamp: {
+    paymentId: String,
+    createdAt: {
       type: Date,
       default: Date.now
     }

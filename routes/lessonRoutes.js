@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { Course, Section, Chapter, Lesson, Quiz, ProgressTracking, QuizAttempt } = require('../db/db');
+const { Course, Section, Chapter, Lesson, Quiz, ProgressTracking, QuizAttempt,Enrollment } = require('../db/db');
 const multer = require('multer');
 const imagekit = require('../utilits/imagekit');
 
@@ -161,6 +161,71 @@ router.delete('/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin',
   } catch (error) {
     console.error('Error deleting lesson:', error);
     res.status(500).json({ message: 'Failed to delete lesson' });
+  }
+});
+
+
+// Get single lesson with access check
+router.get('/:lessonId', authenticate, async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user._id;
+
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    // Get course info through chapter and section
+    const chapter = await Chapter.findById(lesson.chapterId);
+    const section = await Section.findById(chapter.sectionId);
+    const course = await Course.findById(section.courseId);
+
+    // Check user's access to the course
+    const enrollment = await Enrollment.findOne({
+      userId,
+      courseId: course._id,
+      status: 'Active'
+    });
+
+    // If lesson is not preview and user is not enrolled, restrict access
+    if (!lesson.preview && !enrollment && 
+        req.user.role !== 'Super Admin' && 
+        req.user.role !== 'Admin' && 
+        course.createdBy.toString() !== userId.toString()) {
+      return res.json({
+        title: lesson.title,
+        type: lesson.type,
+        duration: lesson.duration,
+        preview: lesson.preview,
+        isLocked: true
+      });
+    }
+
+    // Track progress if user is enrolled
+    if (enrollment) {
+      await ProgressTracking.findOneAndUpdate(
+        { userId, lessonId },
+        { 
+          userId,
+          lessonId,
+          lastAccessed: new Date()
+        },
+        { upsert: true }
+      );
+    }
+
+    // Return full lesson data
+    const lessonData = {
+      ...lesson.toObject(),
+      isLocked: false,
+      progress: enrollment ? await ProgressTracking.findOne({ userId, lessonId }) : null
+    };
+
+    res.json(lessonData);
+  } catch (error) {
+    console.error('Error fetching lesson:', error);
+    res.status(500).json({ message: 'Failed to fetch lesson' });
   }
 });
 

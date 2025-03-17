@@ -1,11 +1,27 @@
 const express = require('express');
 const router = express.Router();
+const Razorpay = require('razorpay');
 const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { Course,Section,Chapter,Lesson,BatchCourse,Enrollment } = require('../db/db');
+const { 
+    Course, 
+    Section, 
+    Chapter, 
+    Lesson, 
+    BatchCourse, 
+    Enrollment, 
+    Transaction, 
+    Batch 
+} = require('../db/db');
 const multer = require('multer');
 const imagekit = require('../utilits/imagekit');
 const checkCourseAccess = require('../middleware/courseMiddleWare');
 const fs = require('fs');
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+});
 
 // Add this at the top of your file
 const deleteImageKitFile = async (url) => {
@@ -59,11 +75,6 @@ router.get('/', authenticate,authorizeRoles('Admin', 'Super Admin'),async (req, 
     res.status(500).json({ message: 'Failed to fetch courses' });
   }
 });
-
-
-
-
-
 
 // Create a new course
 router.post('/', authenticate, authorizeRoles('Admin', 'Super Admin'), upload.single('thumbnail'), async (req, res) => {
@@ -130,7 +141,6 @@ router.put('/:id/thumbnail', authenticate, authorizeRoles('Admin', 'Super Admin'
         res.status(500).json({ message: 'Failed to update course thumbnail' });
     }
 });
-
 
 // Get a single course with its full structure
 router.get('/:courseId', authenticate, checkCourseAccess, async (req, res) => {
@@ -202,6 +212,61 @@ router.get('/:courseId', authenticate, checkCourseAccess, async (req, res) => {
   } catch (error) {
     console.error('Error fetching course structure:', error);
    return  res.status(500).json({ message: 'Failed to fetch course structure' });
+  }
+});
+
+// Get course preview information
+router.get('/:courseId/preview', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findById(courseId)
+      .select('title description thumbnail price salePrice totalLessons totalDuration enrolledStudents status')
+      .populate({
+        path: 'courseSections', // Changed from 'sections' to 'courseSections'
+        select: 'title description order',
+        options: { sort: { order: 1 } },
+        populate: {
+          path: 'chapters',
+          select: 'title description order',
+          options: { sort: { order: 1 } },
+          populate: {
+            path: 'lessons',
+            select: 'title type duration preview order',
+            options: { sort: { order: 1 } }
+          }
+        }
+      });
+
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    // Calculate course statistics
+    const sections = await Section.find({ courseId });
+    const sectionIds = sections.map(section => section._id);
+    const chapters = await Chapter.find({ sectionId: { $in: sectionIds } });
+    const chapterIds = chapters.map(chapter => chapter._id);
+    const lessons = await Lesson.find({ chapterId: { $in: chapterIds } });
+
+    const previewData = {
+      ...course.toObject(),
+      sections: course.courseSections, // Map virtual populate result
+      totalSections: sections.length,
+      totalChapters: chapters.length,
+      totalLessons: lessons.length,
+      totalDuration: lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0),
+      previewLessons: lessons.filter(lesson => lesson.preview).length,
+      enrolledStudents: await Enrollment.countDocuments({ 
+        courseId, 
+        status: 'Active' 
+      })
+    };
+
+    res.json(previewData);
+  } catch (error) {
+    console.error('Error fetching course preview:', error);
+    res.status(500).json({ message: 'Failed to fetch course preview' });
   }
 });
 
@@ -311,7 +376,6 @@ router.delete('/:courseId', authenticate, authorizeRoles('Super Admin', 'Admin')
   }
 });
 
-
 // Section CRUD routes
 router.post('/:courseId/sections', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), async (req, res) => {
   try {
@@ -354,6 +418,284 @@ router.post('/:courseId/sections', authenticate, authorizeRoles('Super Admin', '
     res.status(500).json({ message: 'Failed to create section' });
   }
 });
+
+// Update course pricing
+router.put('/:courseId/pricing', 
+  authenticate, 
+  authorizeRoles('Super Admin', 'Admin'), 
+  async (req, res) => {
+    try {
+      const { courseId } = req.params;
+      const { price, salePrice, enableRazorpay } = req.body;
+
+      // Validate the course exists
+      const course = await Course.findById(courseId);
+      if (!course) {
+        return res.status(404).json({ message: 'Course not found' });
+      }
+
+      // Validate price inputs
+      if (price < 0 || (salePrice && salePrice < 0)) {
+        return res.status(400).json({ message: 'Price cannot be negative' });
+      }
+
+      if (salePrice && salePrice >= price) {
+        return res.status(400).json({ 
+          message: 'Sale price must be less than regular price' 
+        });
+      }
+
+      // Update pricing details
+      course.price = price;
+      course.salePrice = salePrice || null; // If salePrice is undefined/null, remove it
+      course.enableRazorpay = Boolean(enableRazorpay);
+
+      await course.save();
+
+      res.json({
+        message: 'Course pricing updated successfully',
+        course: {
+          id: course._id,
+          title: course.title,
+          price: course.price,
+          salePrice: course.salePrice,
+          enableRazorpay: course.enableRazorpay
+        }
+      });
+
+    } catch (error) {
+      console.error('Error updating course pricing:', error);
+      res.status(500).json({ message: 'Failed to update course pricing' });
+    }
+  }
+);
+
+
+// Batch assignment routes
+router.post('/:courseId/batches', authenticate, authorizeRoles('Super Admin', 'Admin'), async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { batchIds } = req.body;
+    
+    const course = await Course.findById(courseId);
+    
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    // Clear existing batch assignments
+    await BatchCourse.deleteMany({ courseId });
+    
+    // Create new batch assignments
+    const batchAssignments = [];
+    
+    for (const batchId of batchIds) {
+      const batch = await Batch.findById(batchId);
+      
+      if (!batch) {
+        continue; // Skip invalid batch IDs
+      }
+      
+      const batchCourse = new BatchCourse({
+        batchId,
+        courseId,
+        assignedDate: new Date()
+      });
+      
+      await batchCourse.save();
+      batchAssignments.push(batchCourse);
+    }
+    
+    res.json({ 
+      message: 'Batch assignments updated successfully',
+      batchAssignments
+    });
+  } catch (error) {
+    console.error('Error assigning batches:', error);
+    res.status(500).json({ message: 'Failed to assign batches' });
+  }
+});
+
+// Enrollment and payment routes
+router.post('/:courseId/enroll', authenticate, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    
+    const course = await Course.findById(courseId);
+    
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    if (course.status !== 'Published') {
+      return res.status(400).json({ message: 'Course is not published' });
+    }
+    
+    // Check if user is already enrolled
+    const existingEnrollment = await Enrollment.findOne({
+      userId: req.user._id,
+      courseId
+    });
+    
+    if (existingEnrollment) {
+      return res.status(400).json({ message: 'You are already enrolled in this course' });
+    }
+    
+    // Check if user has batch access
+    const userBatches = req.user.batches || [];
+    
+    const batchAccess = await BatchCourse.findOne({
+      courseId,
+      batchId: { $in: userBatches }
+    });
+    
+    if (batchAccess) {
+      // Enroll via batch access
+      const enrollment = new Enrollment({
+        userId: req.user._id,
+        courseId,
+        enrollmentType: 'batch'
+      });
+      
+      // Set expiry date if batch subscription has an expiry
+      const batchSubscription = req.user.batchSubscriptions.find(
+        sub => userBatches.some(b => b.toString() === sub.batch.toString())
+      );
+      
+      if (batchSubscription && batchSubscription.expiresOn) {
+        enrollment.expiryDate = batchSubscription.expiresOn;
+      }
+      
+      await enrollment.save();
+      
+      // Increment enrolled count
+      course.enrolledCount++;
+      await course.save();
+      
+      return res.status(201).json({
+        message: 'Enrolled successfully via batch access',
+        enrollment
+      });
+    }
+    
+    // Check if course is free
+    if (course.price === 0) {
+      // Free enrollment
+      const enrollment = new Enrollment({
+        userId: req.user._id,
+        courseId,
+        enrollmentType: 'free'
+      });
+      
+      await enrollment.save();
+      
+      // Increment enrolled count
+      course.enrolledCount++;
+      await course.save();
+      
+      return res.status(201).json({
+        message: 'Enrolled successfully in free course',
+        enrollment
+      });
+    }
+    
+    // For paid courses, create Razorpay order
+    if (!course.enableRazorpay) {
+      return res.status(400).json({ message: 'Payment is not enabled for this course' });
+    }
+    
+    // Use sale price if available, otherwise use regular price
+    const amount = (course.salePrice || course.price) * 100; // Convert to paise
+    
+    const options = {
+      amount,
+      currency: 'INR',
+      receipt: `course_${courseId}_user_${req.user._id}`,
+      payment_capture: 1
+    };
+    
+    const razorpayOrder = await razorpay.orders.create(options);
+    
+    // Create transaction record
+    const transaction = new Transaction({
+      userId: req.user._id,
+      courseId,
+      orderId: razorpayOrder.id,
+      razorpayOrderId: razorpayOrder.id,
+      amount: amount / 100, // Convert back to rupees for storage
+      currency: 'INR',
+      status: 'created'
+    });
+    
+    await transaction.save();
+    
+    res.json({
+      message: 'Payment order created',
+      order: razorpayOrder,
+      transaction
+    });
+  } catch (error) {
+    console.error('Error enrolling in course:', error);
+    res.status(500).json({ message: 'Failed to enroll in course' });
+  }
+});
+
+router.get('/:courseId/preview', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findById(courseId)
+      .select('title description thumbnail price salePrice totalLessons totalDuration enrolledStudents status')
+      .populate({
+        path: 'courseSections', // Changed from 'sections' to 'courseSections'
+        select: 'title description order',
+        options: { sort: { order: 1 } },
+        populate: {
+          path: 'chapters',
+          select: 'title description order',
+          options: { sort: { order: 1 } },
+          populate: {
+            path: 'lessons',
+            select: 'title type duration preview order',
+            options: { sort: { order: 1 } }
+          }
+        }
+      });
+
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    // Calculate course statistics
+    const sections = await Section.find({ courseId });
+    const sectionIds = sections.map(section => section._id);
+    const chapters = await Chapter.find({ sectionId: { $in: sectionIds } });
+    const chapterIds = chapters.map(chapter => chapter._id);
+    const lessons = await Lesson.find({ chapterId: { $in: chapterIds } });
+
+    const previewData = {
+      ...course.toObject(),
+      sections: course.courseSections, // Map virtual populate result
+      totalSections: sections.length,
+      totalChapters: chapters.length,
+      totalLessons: lessons.length,
+      totalDuration: lessons.reduce((sum, lesson) => sum + (lesson.duration || 0), 0),
+      previewLessons: lessons.filter(lesson => lesson.preview).length,
+      enrolledStudents: await Enrollment.countDocuments({ 
+        courseId, 
+        status: 'Active' 
+      })
+    };
+
+    res.json(previewData);
+  } catch (error) {
+    console.error('Error fetching course preview:', error);
+    res.status(500).json({ message: 'Failed to fetch course preview' });
+  }
+});
+
+
+
 
 
 
