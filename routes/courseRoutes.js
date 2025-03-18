@@ -43,7 +43,7 @@ const upload = multer({
 });
 
 // Get all courses
-router.get('/', authenticate,authorizeRoles('Admin', 'Super Admin'),async (req, res) => {
+router.get('/', authenticate,authorizeRoles('Admin', 'Super Admin','Student'),async (req, res) => {
   try {
     const { status, search } = req.query;
     
