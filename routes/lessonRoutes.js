@@ -47,6 +47,8 @@ router.put('/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin', 'M
   try {
     const { lessonId } = req.params;
     const { title, type, provider, duration, content, preview, order } = req.body;
+    console.log(req.body);
+    
     
     const lesson = await Lesson.findById(lessonId);
     
@@ -67,7 +69,7 @@ router.put('/:lessonId', authenticate, authorizeRoles('Super Admin', 'Admin', 'M
     // Update lesson fields
     if (title) lesson.title = title;
     if (duration) lesson.duration = duration;
-    if (preview !== undefined) lesson.preview = preview === 'true';
+    if (preview) lesson.preview = preview === true;
     if (order) lesson.order = order;
     
     // Update content if type is changed or content is provided
