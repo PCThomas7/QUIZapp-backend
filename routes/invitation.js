@@ -1,9 +1,10 @@
-const express = require('express');
+import express from 'express';
+import crypto from 'crypto';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
+import { User, Invitation, Batch } from '../db/db.js';
+import { sendInvitationEmail } from '../utilits/email.js';
+
 const invitationRouter = express.Router();
-const crypto = require('crypto');
-const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { User, Invitation, Batch } = require('../db/db');
-const { sendInvitationEmail } = require('../utilits/email');
 
 invitationRouter.post('/', authenticate, authorizeRoles('Super Admin', 'Admin'), async (req, res) => {
   try {
@@ -98,4 +99,14 @@ invitationRouter.post('/', authenticate, authorizeRoles('Super Admin', 'Admin'),
   }
 });
 
-module.exports = invitationRouter;
+// Get all invitations
+invitationRouter.get('/', authenticate, authorizeRoles('Super Admin', 'Admin'), async (req, res) => {
+    // ...existing code...
+});
+
+// Update invitation status
+invitationRouter.put('/:id/status', authenticate, authorizeRoles('Super Admin', 'Admin'), async (req, res) => {
+    // ...existing code...
+});
+
+export default invitationRouter;

@@ -1,10 +1,19 @@
-const express = require('express');
-const router = express.Router();
+import express from 'express';
+import multer from 'multer';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
+import { 
+    Course, 
+    Section, 
+    Chapter, 
+    Lesson, 
+    Quiz, 
+    ProgressTracking, 
+    QuizAttempt,
+    Enrollment 
+} from '../db/db.js';
+import imagekit from '../utilits/imagekit.js';
 
-const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { Course, Section, Chapter, Lesson, Quiz, ProgressTracking, QuizAttempt,Enrollment } = require('../db/db');
-const multer = require('multer');
-const imagekit = require('../utilits/imagekit');
+const router = express.Router();
 
 // Configure multer for memory storage
 const upload = multer({
@@ -231,4 +240,4 @@ router.get('/:lessonId', authenticate, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

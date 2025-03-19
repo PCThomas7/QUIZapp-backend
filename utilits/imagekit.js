@@ -1,4 +1,7 @@
-const ImageKit = require('imagekit');
+import ImageKit from 'imagekit';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const imagekit = new ImageKit({
     publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
@@ -6,4 +9,4 @@ const imagekit = new ImageKit({
     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
 });
 
-module.exports = imagekit;
+export default imagekit;

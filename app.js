@@ -1,17 +1,32 @@
-// server.js - Main Express server file
+import express from 'express';
+import mongoose from 'mongoose';
+import { OAuth2Client } from 'google-auth-library';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import crypto from 'crypto';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const express = require('express');
-const mongoose = require('mongoose');
-const { OAuth2Client } = require('google-auth-library');
-const cors = require('cors');
-const {authenticate, authorizeRoles} = require('./middleware/authMiddleWare');
-const {Course, Section, Chapter, Lesson, BatchCourse, Enrollment} = require('./db/db');
-const { upload } = require('./utilits/fileupload');
-const { checkCourseAccess } = require('./middleware/courseMiddleWare');
-const fs = require('fs');
-const path = require('path');
+// Import middlewares
+import { authenticate, authorizeRoles } from './middleware/authMiddleWare.js';
+import { checkCourseAccess } from './middleware/courseMiddleWare.js';
 
-require('dotenv').config();
+// Import database models
+import { 
+    Course, 
+    Transaction, 
+    Enrollment 
+} from './db/db.js';
+
+// Import utilities and scripts
+import { upload } from './utilits/fileupload.js';
+import initializeTags from './scripts/initTags.js';
+
+// Configuration
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,14 +34,15 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const googleClient = new OAuth2Client(CLIENT_ID);
 
-// Middleware
+// CORS Configuration
 const allowedOrigins = [
     'https://quizapp-fe.vercel.app',
     'https://qui-zapp-backend.vercel.app/',
     'http://localhost:5173',
-    'http://localhost:3000' // Add your local development frontend URL if needed
+    'http://localhost:3000'
 ];
 
+// Middleware
 app.use(cors({
     origin: function(origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
@@ -41,90 +57,108 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Import routes
+import authRoutes from './routes/authRoutes.js';
+import batchRoutes from './routes/batchRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import exportRoutes from './routes/getCsvRoutes.js';
+import invitationRoutes from './routes/invitation.js';
+import emailRoutes from './routes/sendMailRoutes.js';
+import courseRoutes from './routes/courseRoutes.js';
+import sectionRoutes from './routes/sectionRoutes.js';
+import chapterRoutes from './routes/chapterRoutes.js';
+import lessonRoutes from './routes/lessonRoutes.js';
+import questionRoutes from './routes/questionRoutes.js';
+import tagRoutes from './routes/TagRoutes.js';
 
+// Route middleware
+app.use('/api/auth', authRoutes);
+app.use('/api/batches', batchRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/invitations', invitationRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/sections', sectionRoutes);
+app.use('/api/chapters', chapterRoutes);
+app.use('/api/lessons', lessonRoutes);
+app.use('/api/questions', questionRoutes);
+app.use('/api/tags', tagRoutes);
 
-
-// Email transporter
-
-
-
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/batches', require('./routes/batchRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));  
-app.use('/api/export', require('./routes/getCsvRoutes'));
-app.use('/api/invitations', require('./routes/invitation'));
-app.use('/api/email', require('./routes/sendMailRoutes'));
-app.use('/api/courses', require('./routes/courseRoutes'));
-app.use('/api/sections', require('./routes/sectionRoutes'));
-app.use('/api/chapters', require('./routes/chapterRoutes'));
-app.use('/api/lessons', require('./routes/lessonRoutes'));
-// Routes
-
+// Base route
 app.get('/', (req, res) => {
     res.send('API running');
-  });
+});
 
-// Verify Razorpay payment
+// Payment verification route
 app.post('/payment/verify', authenticate, async (req, res) => {
     try {
-      const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-      
-      // Find transaction
-      const transaction = await Transaction.findOne({ razorpayOrderId });
-      
-      if (!transaction) {
-        return res.status(404).json({ message: 'Transaction not found' });
-      }
-      
-      // Verify signature
-      const generatedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-        .digest('hex');
+        const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
         
-      if (generatedSignature !== razorpaySignature) {
-        transaction.status = 'failed';
+        // Find transaction
+        const transaction = await Transaction.findOne({ razorpayOrderId });
+        
+        if (!transaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+        
+        // Verify signature
+        const generatedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+            .digest('hex');
+            
+        if (generatedSignature !== razorpaySignature) {
+            transaction.status = 'failed';
+            await transaction.save();
+            
+            return res.status(400).json({ message: 'Invalid payment signature' });
+        }
+        
+        // Update transaction
+        transaction.razorpayPaymentId = razorpayPaymentId;
+        transaction.razorpaySignature = razorpaySignature;
+        transaction.status = 'captured';
+        transaction.paymentId = razorpayPaymentId;
         await transaction.save();
         
-        return res.status(400).json({ message: 'Invalid payment signature' });
-      }
-      
-      // Update transaction
-      transaction.razorpayPaymentId = razorpayPaymentId;
-      transaction.razorpaySignature = razorpaySignature;
-      transaction.status = 'captured';
-      transaction.paymentId = razorpayPaymentId;
-      await transaction.save();
-      
-      // Create enrollment
-      const enrollment = new Enrollment({
-        userId: transaction.userId,
-        courseId: transaction.courseId,
-        enrollmentType: 'paid',
-        transactionId: transaction._id
-      });
-      
-      await enrollment.save();
-      
-      // Increment enrolled count
-      const course = await Course.findById(transaction.courseId);
-      course.enrolledCount++;
-      await course.save();
-      
-      res.json({
-        message: 'Payment verified and enrollment successful',
-        transaction,
-        enrollment
-      });
+        // Create enrollment
+        const enrollment = new Enrollment({
+            userId: transaction.userId,
+            courseId: transaction.courseId,
+            enrollmentType: 'paid',
+            transactionId: transaction._id
+        });
+        
+        await enrollment.save();
+        
+        // Increment enrolled count
+        const course = await Course.findById(transaction.courseId);
+        course.enrolledCount++;
+        await course.save();
+        
+        res.json({
+            message: 'Payment verified and enrollment successful',
+            transaction,
+            enrollment
+        });
     } catch (error) {
-      console.error('Error verifying payment:', error);
-      res.status(500).json({ message: 'Failed to verify payment' });
+        console.error('Error verifying payment:', error);
+        res.status(500).json({ message: 'Failed to verify payment' });
     }
-  });
+});
 
-
+// Database connection
+mongoose.connection.once('open', () => {
+    console.log('Connected to MongoDB');
+    initializeTags()
+        .then(() => console.log('Tags initialized'))
+        .catch(console.error);
+});
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
+
+export default app;

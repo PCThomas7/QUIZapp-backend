@@ -1,13 +1,11 @@
-const express = require('express');
-const userRouter = express.Router();
-const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { User, Batch } = require('../db/db');
+import express from 'express';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
+import { User, Batch } from '../db/db.js';
 
+const userRouter = express.Router();
 
 // User management routes
-// authorizeRoles('Super Admin', 'Admin','Student'),
-// authenticate,
-userRouter.get('/',   async (req, res) => {
+userRouter.get('/', async (req, res) => {
     try {
       const { search, batch, role, status } = req.query;
       
@@ -154,4 +152,4 @@ userRouter.delete('/:id', authenticate, authorizeRoles('Super Admin'), async (re
   }
 });
 
-module.exports = userRouter;
+export default userRouter;

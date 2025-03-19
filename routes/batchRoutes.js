@@ -1,8 +1,8 @@
-const express = require('express');
-const batchRouter = express.Router();
-const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const {Batch} = require('../db/db')  
+import express from 'express';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
+import { Batch, User } from '../db/db.js';
 
+const batchRouter = express.Router();
 
 // Batch management routes
 batchRouter.get('/', authenticate, async (req, res) => {
@@ -114,5 +114,4 @@ batchRouter.delete('/:id', authenticate, authorizeRoles('Super Admin'), async (r
   }
 });
 
-
-module.exports = batchRouter;
+export default batchRouter;

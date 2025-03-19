@@ -1,11 +1,8 @@
-const express = require('express');
-const router = express.Router();    
-const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { Course, Section, Chapter, Lesson } = require('../db/db');
+import express from 'express';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
+import { Course, Section, Chapter, Lesson } from '../db/db.js';
 
-
-
-
+const router = express.Router();
 
 // Update a section
 router.put('/:sectionId', authenticate, authorizeRoles('Super Admin', 'Admin', 'Mentor'), async (req, res) => {
@@ -125,8 +122,4 @@ router.post('/:sectionId/chapters', authenticate, authorizeRoles('Super Admin', 
   }
 });
 
-
-
-
-  module.exports = router;
-  
+export default router;

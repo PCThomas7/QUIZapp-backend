@@ -1,8 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const Razorpay = require('razorpay');
-const { authenticate, authorizeRoles } = require('../middleware/authMiddleWare');
-const { 
+import express from 'express';
+import Razorpay from 'razorpay';
+import multer from 'multer';
+import fs from 'fs';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
+import { 
     Course, 
     Section, 
     Chapter, 
@@ -11,11 +12,11 @@ const {
     Enrollment, 
     Transaction, 
     Batch 
-} = require('../db/db');
-const multer = require('multer');
-const imagekit = require('../utilits/imagekit');
-const checkCourseAccess = require('../middleware/courseMiddleWare');
-const fs = require('fs');
+} from '../db/db.js';
+import imagekit from '../utilits/imagekit.js';
+import { checkCourseAccess } from '../middleware/courseMiddleWare.js';
+
+const router = express.Router();
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -23,18 +24,18 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// Add this at the top of your file
+// Helper function for deleting ImageKit files
 const deleteImageKitFile = async (url) => {
-  if (!url) return;
-  try {
-    const fileId = url.split('/').pop().split('.')[0];
-    await imagekit.deleteFile(fileId);
-  } catch (error) {
-    console.error(`Failed to delete file from ImageKit: ${error.message}`);
-  }
+    if (!url) return;
+    try {
+        const fileId = url.split('/').pop().split('.')[0];
+        await imagekit.deleteFile(fileId);
+    } catch (error) {
+        console.error(`Failed to delete file from ImageKit: ${error.message}`);
+    }
 };
 
-// Configure multer for memory storage instead of disk
+// Configure multer for memory storage
 const upload = multer({ 
     storage: multer.memoryStorage(),
     limits: {
@@ -818,9 +819,4 @@ router.post('/courses/:courseId/enroll', authenticate, async (req, res) => {
   }
 });
 
-
-
-
-
-
-module.exports = router;  // Export the router directly, not as an object
+export default router;

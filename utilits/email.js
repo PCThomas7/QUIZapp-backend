@@ -1,5 +1,7 @@
-const transporter = require('./transporter');
-require('dotenv').config();
+import transporter from './transporter.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const sendInvitationEmail = async (invitation) => {
     try {
@@ -28,6 +30,4 @@ const sendInvitationEmail = async (invitation) => {
     }
 };
 
-module.exports = {
-    sendInvitationEmail
-};
+export { sendInvitationEmail };
