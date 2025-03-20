@@ -116,4 +116,23 @@ router.post('/bulk', async (req, res) => {
     }
 });
 
+// Add this route to handle question deletion
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await QuestionBank.findByIdAndDelete(id);
+    res.json({ 
+      success: true,
+      message: 'Question deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to delete question' 
+    });
+  }
+});
+
+
 export default router;

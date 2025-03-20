@@ -1,29 +1,29 @@
-const mongoose = require('mongoose');
-require('dotenv').config();
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import User from '../models/User.js';
+import Batch from '../models/Batch.js';
+import Invitation from '../models/Invitation.js';
+import Course from '../models/Course.js';
+import Section from '../models/Section.js';
+import Chapter from '../models/Chapter.js';
+import Lesson from '../models/Lesson.js';
+import BatchCourse from '../models/BatchCourse.js';
+import Enrollment from '../models/Enrollment.js';
+import Transaction from '../models/Transaction.js';
+import Quiz from '../models/Quiz.js';
+import Question from '../models/Question.js';
+import QuizAttempt from '../models/QuizAttempt.js';
+import ProgressTracking from '../models/ProgressTracking.js';
+import QuestionBank from '../models/QuestionBank.js';
+import TagSystem from '../models/TagSystem.js';
 
-// Import all models
-const User = require('../models/User');
-const Batch = require('../models/Batch');
-const Invitation = require('../models/Invitation');
-const Course = require('../models/Course');
-const Section = require('../models/Section');
-const Chapter = require('../models/Chapter');
-const Lesson = require('../models/Lesson');
-const BatchCourse = require('../models/BatchCourse');
-const Enrollment = require('../models/Enrollment');
-const Transaction = require('../models/Transaction');
-const Quiz = require('../models/Quiz');
-const Question = require('../models/Question');
-const QuizAttempt = require('../models/QuizAttempt');
-const ProgressTracking = require('../models/ProgressTracking');
-const QuestionBank = require('../models/QuestionBank');
-const TagSystem = require('../models/TagSystem');
+dotenv.config();
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI);
 
 // Export all models
-module.exports = {
+export {
     User,
     Batch,
     Invitation,

@@ -9,6 +9,8 @@ const batchSchema = new mongoose.Schema({
       ref: 'User'
     },
     active: { type: Boolean, default: true }
-  });
+});
 
-module.exports = mongoose.model('Batch', batchSchema);
+const Batch = mongoose.model('Batch', batchSchema);
+
+export default Batch;

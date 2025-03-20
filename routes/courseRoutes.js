@@ -14,7 +14,7 @@ import {
     Batch 
 } from '../db/db.js';
 import imagekit from '../utilits/imagekit.js';
-import { checkCourseAccess } from '../middleware/courseMiddleWare.js';
+import  checkCourseAccess  from '../middleware/courseMiddleWare.js';
 
 const router = express.Router();
 

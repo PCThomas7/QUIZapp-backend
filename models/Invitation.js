@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
- const invitationSchema = new mongoose.Schema({
+const invitationSchema = new mongoose.Schema({
     email: { type: String, required: true },
     role: { 
       type: String, 
@@ -30,6 +30,8 @@ const mongoose = require('mongoose');
       enum: ['Pending', 'Accepted', 'Expired'],
       default: 'Pending'
     }
-  });
+});
 
-module.exports = mongoose.model('Invitation', invitationSchema);
+const Invitation = mongoose.model('Invitation', invitationSchema);
+
+export default Invitation;

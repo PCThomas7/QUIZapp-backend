@@ -1,5 +1,10 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const models = [
     'User',
@@ -31,15 +36,22 @@ if (!fs.existsSync(modelsDir)) {
 models.forEach(model => {
     const filePath = path.join(modelsDir, `${model}.js`);
     if (!fs.existsSync(filePath)) {
-        const template = `const mongoose = require('mongoose');
+        const template = `import mongoose from 'mongoose';
 
 const ${model.toLowerCase()}Schema = new mongoose.Schema({
     // Schema definition here
 });
 
-module.exports = mongoose.model('${model}', ${model.toLowerCase()}Schema);
+const ${model} = mongoose.model('${model}', ${model.toLowerCase()}Schema);
+
+export default ${model};
 `;
         fs.writeFileSync(filePath, template);
         console.log(`Created ${model}.js`);
     }
 });
+
+// Run if called directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+    console.log('Model files created successfully');
+}

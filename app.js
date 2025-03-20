@@ -10,7 +10,7 @@ import { dirname } from 'path';
 
 // Import middlewares
 import { authenticate, authorizeRoles } from './middleware/authMiddleWare.js';
-import { checkCourseAccess } from './middleware/courseMiddleWare.js';
+import  checkCourseAccess  from './middleware/courseMiddleWare.js';
 
 // Import database models
 import { 

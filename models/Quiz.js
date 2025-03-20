@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
- const quizSchema = new mongoose.Schema({
+const quizSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String },
     timeLimit: { type: Number }, // in minutes
@@ -12,7 +12,8 @@ const mongoose = require('mongoose');
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     }
-  });
-  
+});
 
-module.exports = mongoose.model('Quiz', quizSchema);
+const Quiz = mongoose.model('Quiz', quizSchema);
+
+export default Quiz;

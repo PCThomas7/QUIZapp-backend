@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const batchCourseSchema = new mongoose.Schema({
     batchId: {
@@ -15,6 +15,8 @@ const batchCourseSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  });
+});
 
-module.exports = mongoose.model('BatchCourse', batchCourseSchema);
+const BatchCourse = mongoose.model('BatchCourse', batchCourseSchema);
+
+export default BatchCourse;

@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import TagSystem from './TagSystem.js';
 
 const questionBankSchema = new mongoose.Schema({
   id: {
@@ -85,7 +86,6 @@ option_d: {
 questionBankSchema.index({ 'tags.subject': 1, 'tags.chapter': 1 });
 questionBankSchema.index({ 'tags.exam_type': 1, 'tags.difficulty_level': 1 });
 
+const QuestionBank = mongoose.model('QuestionBank', questionBankSchema);
 
-
-
-module.exports = mongoose.model('QuestionBank', questionBankSchema);
+export default QuestionBank;

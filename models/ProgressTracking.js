@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
- const progressTrackingSchema = new mongoose.Schema({
+const progressTrackingSchema = new mongoose.Schema({
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -28,6 +28,8 @@ const mongoose = require('mongoose');
       type: Date,
       default: Date.now
     }
-  });
+});
 
-module.exports = mongoose.model('ProgressTracking', progressTrackingSchema);
+const ProgressTracking = mongoose.model('ProgressTracking', progressTrackingSchema);
+
+export default ProgressTracking;
