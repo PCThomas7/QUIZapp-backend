@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { TagSystem } from '../db/db.js';
+import TagController from '../controllers/TagController.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -345,5 +346,11 @@ router.get('/debug', async (req, res) => {
     res.status(500).json({ message: 'Debug error', error: error.message });
   }
 });
+
+router.get('/', TagController.getAllTags);
+router.post('/:category', TagController.addTag);
+router.put('/:category', TagController.updateTag);
+router.delete('/:category/:value', TagController.deleteTag);
+router.post('/upload', TagController.uploadTagsCsv);
 
 export default router;

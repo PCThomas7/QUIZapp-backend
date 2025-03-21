@@ -16,7 +16,8 @@ import  checkCourseAccess  from './middleware/courseMiddleWare.js';
 import { 
     Course, 
     Transaction, 
-    Enrollment 
+    Enrollment, 
+    Quiz
 } from './db/db.js';
 
 // Import utilities and scripts
@@ -70,6 +71,7 @@ import chapterRoutes from './routes/chapterRoutes.js';
 import lessonRoutes from './routes/lessonRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import tagRoutes from './routes/TagRoutes.js';
+import QuizRoutes from './routes/QuizRoutes.js';
 
 // Route middleware
 app.use('/api/auth', authRoutes);
@@ -84,6 +86,7 @@ app.use('/api/chapters', chapterRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/tags', tagRoutes);
+app.use('api/quzzies', QuizRoutes);
 
 // Base route
 app.get('/', (req, res) => {
