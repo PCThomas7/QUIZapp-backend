@@ -70,6 +70,11 @@ option_d: {
     },
     source: String
   },
+  usedInQuizzes: {
+    type: [String],
+    default: []
+  },
+  
   createdAt: {
     type: Date,
     default: Date.now

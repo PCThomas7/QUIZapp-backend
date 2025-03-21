@@ -134,5 +134,51 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Add bulk update route
+router.patch('/bulk-update', async (req, res) => {
+  try {
+    const { questions } = req.body;
+    
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid questions to update'
+      });
+    }
+
+    // Process each question update
+    const updatePromises = questions.map(async (question) => {
+      if (!question.id) return null;
+      
+      // Find and update the question
+      return QuestionBank.findOneAndUpdate(
+        { id: question.id },
+        { 
+          $set: {
+            ...question,
+            updatedAt: new Date()
+          }
+        },
+        { new: true }
+      );
+    });
+
+    const updatedQuestions = await Promise.all(updatePromises);
+    const validUpdates = updatedQuestions.filter(q => q !== null);
+
+    res.status(200).json({
+      success: true,
+      message: `${validUpdates.length} questions updated successfully`,
+      data: validUpdates
+    });
+  } catch (error) {
+    console.error("Error in bulk question update:", error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update questions',
+      message: error.message
+    });
+  }
+});
 
 export default router;

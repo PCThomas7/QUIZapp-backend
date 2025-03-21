@@ -53,7 +53,7 @@ app.use(cors({
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS','PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
@@ -86,7 +86,8 @@ app.use('/api/chapters', chapterRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/tags', tagRoutes);
-app.use('api/quzzies', QuizRoutes);
+app.use('/api/quizzes', QuizRoutes);
+
 
 // Base route
 app.get('/', (req, res) => {

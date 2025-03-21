@@ -1,6 +1,6 @@
-import{Quiz} from './db/db.js';
+import Quiz from '../models/Quiz.js';
 
-const  createQuiz = async (req, res) => {
+const createQuiz = async (req, res) => {
     try {
         const { 
             title,
@@ -14,6 +14,8 @@ const  createQuiz = async (req, res) => {
             sections,
             createdBy
         } = req.body;
+        console.log('Received request:', req.body);
+        console.log('title:', title);
 
         // Basic validation
         if (!title || !createdBy) {
@@ -62,9 +64,147 @@ const  createQuiz = async (req, res) => {
     }
 };
 
+const getQuizzes = async (req, res) => {
+    try {
+        const quizzes = await Quiz.find()
+            .sort({ createdAt: -1 })
+            .populate('createdBy', 'name email')
+            .populate({
+                path: 'sections.questions',
+                model: 'QuestionBank'  // Use QuestionBank model instead of Question
+            });
+        
+        // Add id field for frontend compatibility
+        const transformedQuizzes = quizzes.map(quiz => {
+            const quizObj = quiz.toObject();
+            quizObj.id = quizObj._id;
+            
+            // Transform sections and questions
+            if (quizObj.sections) {
+                quizObj.sections = quizObj.sections.map(section => {
+                    return {
+                        ...section,
+                        id: section._id
+                    };
+                });
+            }
+            
+            return quizObj;
+        });
+        
+        res.status(200).json({
+            message: 'Quizzes fetched successfully',
+            quizzes: transformedQuizzes
+        });
+    } catch (error) {
+        console.error('Error fetching quizzes:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch quizzes',
+            error: error.message 
+        });
+    }
+};
 
-// Change the export at the bottom to:
+const getQuiz = async (req, res) => {
+    try {
+        const quiz = await Quiz.findById(req.params.id)
+            .populate('createdBy', 'name email')
+            .populate({
+                path: 'sections.questions',
+                model: 'QuestionBank'  // Use QuestionBank model instead of Question
+            });
+        
+        if (!quiz) {
+            return res.status(404).json({ 
+                message: 'Quiz not found' 
+            });
+        }
+
+        // Add id field for frontend compatibility
+        const quizObj = quiz.toObject();
+        quizObj.id = quizObj._id;
+        
+        // Transform sections and questions
+        if (quizObj.sections) {
+            quizObj.sections = quizObj.sections.map(section => {
+                return {
+                    ...section,
+                    id: section._id
+                };
+            });
+        }
+
+        res.status(200).json({
+            message: 'Quiz fetched successfully',
+            quiz: quizObj
+        });
+    } catch (error) {
+        console.error('Error fetching quiz:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch quiz',
+            error: error.message 
+        });
+    }
+};
+
+const updateQuiz = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        const updatedQuiz = await Quiz.findByIdAndUpdate(
+            id,
+            updateData,
+            { new: true, runValidators: true }
+        ).populate('createdBy', 'name email');
+
+        if (!updatedQuiz) {
+            return res.status(404).json({ 
+                message: 'Quiz not found' 
+            });
+        }
+
+        res.status(200).json({
+            message: 'Quiz updated successfully',
+            quiz: updatedQuiz
+        });
+    } catch (error) {
+        console.error('Error updating quiz:', error);
+        res.status(500).json({ 
+            message: 'Failed to update quiz',
+            error: error.message 
+        });
+    }
+};
+
+const deleteQuiz = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deletedQuiz = await Quiz.findByIdAndDelete(id);
+
+        if (!deletedQuiz) {
+            return res.status(404).json({ 
+                message: 'Quiz not found' 
+            });
+        }
+
+        res.status(200).json({
+            message: 'Quiz deleted successfully',
+            quiz: deletedQuiz
+        });
+    } catch (error) {
+        console.error('Error deleting quiz:', error);
+        res.status(500).json({ 
+            message: 'Failed to delete quiz',
+            error: error.message 
+        });
+    }
+};
+
 export default {
-  createQuiz,
-  // Add other controller methods here as you implement them
+    createQuiz,
+    getQuizzes,
+    getQuiz,
+    updateQuiz,
+    deleteQuiz
 };
