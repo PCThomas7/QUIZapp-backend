@@ -1,4 +1,5 @@
 import Quiz from '../models/Quiz.js';
+import QuizAttempt from '../models/QuizAttempt.js';
 
 const createQuiz = async (req, res) => {
     try {
@@ -201,10 +202,211 @@ const deleteQuiz = async (req, res) => {
     }
 };
 
+const submitQuizAttempt = async (req, res) => {
+    try {
+        const { id: quizId } = req.params;
+        // Get userId from request body if not available in req.user
+        const userId = req.user?._id || req.body.userId;
+        
+        if (!userId) {
+            return res.status(400).json({
+                message: 'User ID is required. Please provide it in the request body if not authenticated.'
+            });
+        }
+        
+        const { answers, timeSpent, completed } = req.body;
+
+        // Validate quiz exists
+        const quiz = await Quiz.findById(quizId)
+            .populate({
+                path: 'sections.questions',
+                model: 'QuestionBank'
+            });
+
+        if (!quiz) {
+            return res.status(404).json({
+                message: 'Quiz not found'
+            });
+        }
+
+        // Calculate score and statistics
+        let score = 0;
+        let maxScore = 0;
+        let correctAnswers = 0;
+        let incorrectAnswers = 0;
+        let unattemptedAnswers = 0;
+        
+        // Process each question to calculate score
+        quiz.sections.forEach(section => {
+            section.questions.forEach(question => {
+                const questionId = question._id.toString();
+                const userAnswers = answers[questionId] || [];
+                const correctAnswersList = question.correct_answers || [];
+                
+                // Calculate max possible score for this question
+                const questionScore = question.score || section.marks || 1;
+                maxScore += questionScore;
+                
+                // Check if answer is correct
+                const isCorrect = 
+                    JSON.stringify([...userAnswers].sort()) === 
+                    JSON.stringify([...correctAnswersList].sort());
+                
+                if (userAnswers.length === 0) {
+                    // Question not attempted
+                    unattemptedAnswers++;
+                } else if (isCorrect) {
+                    // Correct answer
+                    score += questionScore;
+                    correctAnswers++;
+                } else {
+                    // Incorrect answer
+                    const negativeMarks = question.negative_mark || section.negativeMarks || 0;
+                    score -= negativeMarks;
+                    incorrectAnswers++;
+                }
+            });
+        });
+
+        // Create new attempt
+        const newAttempt = new QuizAttempt({
+            quiz: quizId,
+            user: userId,
+            answers: Object.fromEntries(
+                Object.entries(answers).map(([key, value]) => [key, value])
+            ),
+            score,
+            maxScore,
+            timeSpent,
+            completed,
+            correctAnswers,
+            incorrectAnswers,
+            unattemptedAnswers
+        });
+
+        // Save to database
+        const savedAttempt = await newAttempt.save();
+        
+        res.status(201).json({
+            message: 'Quiz attempt submitted successfully',
+            attempt: savedAttempt
+        });
+
+    } catch (error) {
+        console.error('Error submitting quiz attempt:', error);
+        res.status(500).json({ 
+            message: 'Failed to submit quiz attempt',
+            error: error.message 
+        });
+    }
+};
+
+const getAllQuizAttempts = async (req, res) => {
+    try {
+        const { id: quizId } = req.params;
+        
+        // Validate quiz exists
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({
+                message: 'Quiz not found'
+            });
+        }
+        
+        // Get all attempts for this quiz
+        const attempts = await QuizAttempt.find({ quiz: quizId })
+            .populate('user', 'name email')
+            .sort({ submittedAt: -1 });
+        
+        res.status(200).json({
+            message: 'Quiz attempts fetched successfully',
+            attempts
+        });
+    } catch (error) {
+        console.error('Error fetching quiz attempts:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch quiz attempts',
+            error: error.message 
+        });
+    }
+};
+
+const getUserQuizAttempts = async (req, res) => {
+    try {
+        const { id: quizId } = req.params;
+        // Get userId from request body if not available in req.user
+        const userId = req.user?._id || req.body.userId;
+        
+        if (!userId) {
+            return res.status(400).json({
+                message: 'User ID is required. Please provide it in the request body if not authenticated.'
+            });
+        }
+        
+        // Validate quiz exists
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) {
+            return res.status(404).json({
+                message: 'Quiz not found'
+            });
+        }
+        
+        // Get all attempts for this quiz by this user
+        const attempts = await QuizAttempt.find({ 
+            quiz: quizId,
+            user: userId
+        }).sort({ submittedAt: -1 });
+        
+        res.status(200).json({
+            message: 'User quiz attempts fetched successfully',
+            attempts
+        });
+    } catch (error) {
+        console.error('Error fetching user quiz attempts:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch user quiz attempts',
+            error: error.message 
+        });
+    }
+};
+
+const getQuizAttemptDetails = async (req, res) => {
+    try {
+        const { id: attemptId } = req.params;
+        
+        // Get attempt details
+        const attempt = await QuizAttempt.findById(attemptId)
+            .populate('quiz')
+            .populate('user', 'name email');
+        
+        if (!attempt) {
+            return res.status(404).json({
+                message: 'Quiz attempt not found'
+            });
+        }
+        
+        res.status(200).json({
+            message: 'Quiz attempt details fetched successfully',
+            attempt
+        });
+    } catch (error) {
+        console.error('Error fetching quiz attempt details:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch quiz attempt details',
+            error: error.message 
+        });
+    }
+};
+
+// Add these methods to the export
 export default {
     createQuiz,
     getQuizzes,
     getQuiz,
     updateQuiz,
-    deleteQuiz
+    deleteQuiz,
+    submitQuizAttempt,
+    getAllQuizAttempts,
+    getUserQuizAttempts,
+    getQuizAttemptDetails
 };

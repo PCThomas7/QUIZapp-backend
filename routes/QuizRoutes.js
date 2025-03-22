@@ -1,5 +1,6 @@
 import express from 'express';
 import QuizController from '../controllers/QuizController.js';
+import { authenticate } from '../middleware/authMiddleWare.js';
 
 const router = express.Router();
 
@@ -10,18 +11,19 @@ router.get('/:id', QuizController.getQuiz);
 router.put('/:id', QuizController.updateQuiz);
 router.delete('/:id', QuizController.deleteQuiz);
 
+// Quiz Attempts operations - with authentication
+router.post('/:id/attempts', authenticate, QuizController.submitQuizAttempt);
+router.get('/:id/attempts', authenticate, QuizController.getAllQuizAttempts);
+router.get('/:id/attempts/me', authenticate, QuizController.getUserQuizAttempts);
+router.get('/attempts/:id', authenticate, QuizController.getQuizAttemptDetails);
+
+// Uncomment these when you implement them
 // // Quiz Questions operations
 // router.get('/:id/questions', QuizController.getQuizQuestions);
 // router.post('/:id/questions', QuizController.addQuestionToQuiz);
 // router.put('/questions/:id', QuizController.updateQuestion);
 // router.delete('/questions/:id', QuizController.deleteQuestion);
 // router.post('/:id/questions/reorder', QuizController.reorderQuestions);
-
-// // Quiz Attempts operations
-// router.post('/:id/attempts', QuizController.submitQuizAttempt);
-// router.get('/:id/attempts', QuizController.getAllQuizAttempts);
-// router.get('/:id/attempts/me', QuizController.getUserQuizAttempts);
-// router.get('/attempts/:id', QuizController.getQuizAttemptDetails);
 
 // // Quiz Statistics
 // router.get('/:id/statistics', QuizController.getQuizStatistics);

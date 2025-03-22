@@ -1,28 +1,54 @@
 import mongoose from 'mongoose';
 
 const quizAttemptSchema = new mongoose.Schema({
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+    quiz: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Quiz',
+        required: true
     },
-    quizId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Quiz',
-      required: true
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
-    lessonId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Lesson'
+    answers: {
+        type: Map,
+        of: [String],
+        default: {}
     },
-    score: { type: Number },
-    passed: { type: Boolean },
-    attemptDate: {
-      type: Date,
-      default: Date.now
+    score: {
+        type: Number,
+        default: 0
     },
-    timeTaken: { type: Number } // in seconds
-});
+    maxScore: {
+        type: Number,
+        default: 0
+    },
+    timeSpent: {
+        type: Number,  // in seconds
+        default: 0
+    },
+    completed: {
+        type: Boolean,
+        default: false
+    },
+    correctAnswers: {
+        type: Number,
+        default: 0
+    },
+    incorrectAnswers: {
+        type: Number,
+        default: 0
+    },
+    unattemptedAnswers: {
+        type: Number,
+        default: 0
+    },
+    submittedAt: {
+        type: Date,
+        default: Date.now
+    }
+}, { timestamps: true });
 
 const QuizAttempt = mongoose.model('QuizAttempt', quizAttemptSchema);
 
