@@ -203,6 +203,8 @@ const deleteQuiz = async (req, res) => {
 };
 
 const submitQuizAttempt = async (req, res) => {
+console.log('Received request:', req.body);
+
     try {
         const { id: quizId } = req.params;
         // Get userId from request body if not available in req.user
@@ -241,16 +243,15 @@ const submitQuizAttempt = async (req, res) => {
             section.questions.forEach(question => {
                 const questionId = question._id.toString();
                 const userAnswers = answers[questionId] || [];
-                const correctAnswersList = question.correct_answers || [];
+                // Fix: Use correct_answer instead of correct_answers
+                const correctAnswer = question.correct_answer;
                 
                 // Calculate max possible score for this question
                 const questionScore = question.score || section.marks || 1;
                 maxScore += questionScore;
                 
-                // Check if answer is correct
-                const isCorrect = 
-                    JSON.stringify([...userAnswers].sort()) === 
-                    JSON.stringify([...correctAnswersList].sort());
+                // Check if answer is correct (compare single answers)
+                const isCorrect = userAnswers.length === 1 && userAnswers[0] === correctAnswer;
                 
                 if (userAnswers.length === 0) {
                     // Question not attempted
@@ -289,6 +290,7 @@ const submitQuizAttempt = async (req, res) => {
         
         res.status(201).json({
             message: 'Quiz attempt submitted successfully',
+            id: savedAttempt._id,
             attempt: savedAttempt
         });
 
