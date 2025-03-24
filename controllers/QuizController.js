@@ -15,21 +15,13 @@ const createQuiz = async (req, res) => {
             sections,
             createdBy
         } = req.body;
-        console.log('Received request:', req.body);
-        console.log('title:', title);
-
-        // Basic validation
-        if (!title || !createdBy) {
-            return res.status(400).json({ 
-                message: 'Title and createdBy are required' 
-            });
-        }
 
         // Create new quiz
         const newQuiz = new Quiz({
             title,
             description,
-            timeLimit: total_duration,
+            total_duration: total_duration || 0,  // Add this line
+            timeLimit: total_duration || 0,       // Keep for backward compatibility
             passingScore: passingScore || 70,
             createdBy,
             metadata: {
@@ -55,7 +47,6 @@ const createQuiz = async (req, res) => {
             message: 'Quiz created successfully',
             quiz: savedQuiz
         });
-
     } catch (error) {
         console.error('Error creating quiz:', error);
         res.status(500).json({ 
@@ -181,16 +172,25 @@ const updateQuiz = async (req, res) => {
 const deleteQuiz = async (req, res) => {
     try {
         const { id } = req.params;
-        const deletedQuiz = await Quiz.findByIdAndDelete(id);
+        const userId = req.user._id; // Get the authenticated user's ID
 
-        if (!deletedQuiz) {
+        // Find the quiz and check ownership
+        const quiz = await Quiz.findOne({ _id: id, createdBy: userId });
+        
+        if (!quiz) {
             return res.status(404).json({ 
-                message: 'Quiz not found' 
+                message: 'Quiz not found or you do not have permission to delete it' 
             });
         }
+        
+        // Delete all quiz attempts for this specific quiz
+        await QuizAttempt.deleteMany({ quiz: id });
+        
+        // Delete the specific quiz
+        const deletedQuiz = await Quiz.findByIdAndDelete(id);
 
         res.status(200).json({
-            message: 'Quiz deleted successfully',
+            message: 'Quiz and related attempts deleted successfully',
             quiz: deletedQuiz
         });
     } catch (error) {

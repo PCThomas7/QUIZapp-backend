@@ -9,7 +9,7 @@ router.post('/', QuizController.createQuiz);
 router.get('/', QuizController.getQuizzes);
 router.get('/:id', QuizController.getQuiz);
 router.put('/:id', QuizController.updateQuiz);
-router.delete('/:id', QuizController.deleteQuiz);
+router.delete('/:id', authenticate, QuizController.deleteQuiz);
 
 // Quiz Attempts operations - with authentication
 router.post('/:id/attempts', authenticate, QuizController.submitQuizAttempt);
