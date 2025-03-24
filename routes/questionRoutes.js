@@ -4,42 +4,44 @@ import { QuestionBank } from '../db/db.js';
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-    console.log(req.query);
+    console.log('Received query params:', req.query);
     try {
       const {
         page = 1,
         limit = 10,
-        search,
-        exam_type,
-        subject,
-        chapter,
-        topic,
-        difficulty_level,
-        question_type,
-        source,
+        filters = {},  // Get the filters object
+        searchQuery = '', // Rename search to searchQuery
       } = req.query;
-  
+
+      // Parse filters if it's a string
+      const parsedFilters = typeof filters === 'string' ? JSON.parse(filters) : filters;
+      
       // Build filter query
       const filter = {};
-      if (exam_type) filter['tags.exam_type'] = exam_type;
-      if (subject) filter['tags.subject'] = subject;
-      if (chapter) filter['tags.chapter'] = chapter;
-      if (topic) filter['tags.topic'] = topic;
-      if (difficulty_level) filter['tags.difficulty_level'] = difficulty_level;
-      if (question_type) filter['tags.question_type'] = question_type;
-      if (source) filter['tags.source'] = source;
+      
+      // Handle tag filters
+      if (Object.keys(parsedFilters).length > 0) {
+        // Add each filter to the tags object
+        Object.entries(parsedFilters).forEach(([key, value]) => {
+          if (value) {
+            filter[`tags.${key}`] = value;
+          }
+        });
+      }
   
       // Add search query if present
-      if (search) {
+      if (searchQuery) {
         filter.$or = [
-          { question_text: { $regex: search, $options: 'i' } },
-          { option_a: { $regex: search, $options: 'i' } },
-          { option_b: { $regex: search, $options: 'i' } },
-          { option_c: { $regex: search, $options: 'i' } },
-          { option_d: { $regex: search, $options: 'i' } },
-          { explanation: { $regex: search, $options: 'i' } },
+          { question_text: { $regex: searchQuery, $options: 'i' } },
+          { option_a: { $regex: searchQuery, $options: 'i' } },
+          { option_b: { $regex: searchQuery, $options: 'i' } },
+          { option_c: { $regex: searchQuery, $options: 'i' } },
+          { option_d: { $regex: searchQuery, $options: 'i' } },
+          { explanation: { $regex: searchQuery, $options: 'i' } },
         ];
       }
+
+      console.log('Applied filter:', JSON.stringify(filter, null, 2));
   
       const skip = (parseInt(page) - 1) * parseInt(limit);
   
@@ -50,6 +52,10 @@ router.get('/', async (req, res) => {
           .limit(parseInt(limit)),
         QuestionBank.countDocuments(filter),
       ]);
+
+      console.log(`Found ${questions.length} questions out of ${totalCount} total`);
+      console.log('Filter conditions:', filter);
+      console.log('Sample question tags:', questions[0]?.tags);
   
       res.json({
         success: true,
