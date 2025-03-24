@@ -70,10 +70,10 @@ option_d: {
     },
     source: String
   },
-  usedInQuizzes: {
-    type: [String],
-    default: []
-  },
+  usedInQuizzes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Quiz'
+  }],
   
   createdAt: {
     type: Date,

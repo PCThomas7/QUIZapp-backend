@@ -1,5 +1,6 @@
 import express from 'express';
 import { QuestionBank } from '../db/db.js';
+import Quiz from '../models/Quiz.js';
 
 const router = express.Router();
 
@@ -45,22 +46,35 @@ router.get('/', async (req, res) => {
   
       const skip = (parseInt(page) - 1) * parseInt(limit);
   
+      // Get questions with populated quiz information
       const [questions, totalCount] = await Promise.all([
         QuestionBank.find(filter)
+          .populate('usedInQuizzes', 'id title') // Populate quiz titles
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(parseInt(limit)),
         QuestionBank.countDocuments(filter),
       ]);
 
+      // Transform questions to include quiz titles with null check
+      const transformedQuestions = questions.map(question => {
+        const questionObj = question.toObject();
+        questionObj.quizTitles = Array.isArray(questionObj.usedInQuizzes) 
+          ? questionObj.usedInQuizzes.map(quiz => ({
+              id: quiz?.id || quiz?._id,
+              title: quiz?.title || 'Unknown Quiz'
+            }))
+          : [];
+        delete questionObj.usedInQuizzes;
+        return questionObj;
+      });
+
       console.log(`Found ${questions.length} questions out of ${totalCount} total`);
-      console.log('Filter conditions:', filter);
-      console.log('Sample question tags:', questions[0]?.tags);
-  
+      
       res.json({
         success: true,
         data: {
-          questions,
+          questions: transformedQuestions,
           pagination: {
             currentPage: parseInt(page),
             totalPages: Math.ceil(totalCount / parseInt(limit)),
@@ -77,6 +91,40 @@ router.get('/', async (req, res) => {
           message: error.message 
         });
     }
+});
+
+// Update delete route to handle quiz references
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const question = await QuestionBank.findById(id);
+    
+    if (!question) {
+      return res.status(404).json({
+        success: false,
+        message: 'Question not found'
+      });
+    }
+
+    // Remove question references from all quizzes
+    await Quiz.updateMany(
+      { 'sections.questions': id },
+      { $pull: { 'sections.$.questions': id } }
+    );
+
+    await QuestionBank.findByIdAndDelete(id);
+    
+    res.json({ 
+      success: true,
+      message: 'Question deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Error deleting question:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to delete question' 
+    });
+  }
 });
 
 router.post('/bulk', async (req, res) => {

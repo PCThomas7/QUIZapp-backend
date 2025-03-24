@@ -1,5 +1,7 @@
 import Quiz from '../models/Quiz.js';
 import QuizAttempt from '../models/QuizAttempt.js';
+import { v4 as uuidv4 } from 'uuid'; // Add this import at the top
+import QuestionBank from '../models/QuestionBank.js';
 
 const createQuiz = async (req, res) => {
     try {
@@ -16,12 +18,13 @@ const createQuiz = async (req, res) => {
             createdBy
         } = req.body;
 
-        // Create new quiz
+        // Create new quiz with unique ID
         const newQuiz = new Quiz({
+            id: uuidv4(), // Generate unique ID
             title,
             description,
-            total_duration: total_duration || 0,  // Add this line
-            timeLimit: total_duration || 0,       // Keep for backward compatibility
+            total_duration: total_duration || 0,
+            timeLimit: total_duration || 0,
             passingScore: passingScore || 70,
             createdBy,
             metadata: {
@@ -42,6 +45,18 @@ const createQuiz = async (req, res) => {
 
         // Save to database
         const savedQuiz = await newQuiz.save();
+        
+        // Update QuestionBank documents to include this quiz in usedInQuizzes
+        if (sections && sections.length > 0) {
+            const questionIds = sections.reduce((acc, section) => {
+                return acc.concat(section.questions || []);
+            }, []);
+
+            await QuestionBank.updateMany(
+                { _id: { $in: questionIds } },
+                { $addToSet: { usedInQuizzes: savedQuiz._id } }
+            );
+        }
         
         res.status(201).json({
             message: 'Quiz created successfully',
@@ -183,14 +198,20 @@ const deleteQuiz = async (req, res) => {
             });
         }
         
-        // Delete all quiz attempts for this specific quiz
+        // Remove quiz reference from all questions
+        await QuestionBank.updateMany(
+            { usedInQuizzes: quiz._id },
+            { $pull: { usedInQuizzes: quiz._id } }
+        );
+        
+        // Delete all quiz attempts
         await QuizAttempt.deleteMany({ quiz: id });
         
-        // Delete the specific quiz
+        // Delete the quiz
         const deletedQuiz = await Quiz.findByIdAndDelete(id);
 
         res.status(200).json({
-            message: 'Quiz and related attempts deleted successfully',
+            message: 'Quiz and related data deleted successfully',
             quiz: deletedQuiz
         });
     } catch (error) {
