@@ -20,7 +20,7 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "/routes/(.*)",
       "dest": "app.js"
     },
     {
