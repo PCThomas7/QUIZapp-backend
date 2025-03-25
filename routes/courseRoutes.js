@@ -1,5 +1,5 @@
 import express from 'express';
-import Razorpay from 'razorpay';
+// import Razorpay from 'razorpay';
 import multer from 'multer';
 import fs from 'fs';
 import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
@@ -19,10 +19,10 @@ import  checkCourseAccess  from '../middleware/courseMiddleWare.js';
 const router = express.Router();
 
 // Initialize Razorpay
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+// const razorpay = new Razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID,
+//     key_secret: process.env.RAZORPAY_KEY_SECRET
+// });
 
 // Helper function for deleting ImageKit files
 const deleteImageKitFile = async (url) => {
@@ -518,128 +518,128 @@ router.post('/:courseId/batches', authenticate, authorizeRoles('Super Admin', 'A
 });
 
 // Enrollment and payment routes
-router.post('/:courseId/enroll', authenticate, async (req, res) => {
-  try {
-    const { courseId } = req.params;
+// router.post('/:courseId/enroll', authenticate, async (req, res) => {
+//   try {
+//     const { courseId } = req.params;
     
-    const course = await Course.findById(courseId);
+//     const course = await Course.findById(courseId);
     
-    if (!course) {
-      return res.status(404).json({ message: 'Course not found' });
-    }
+//     if (!course) {
+//       return res.status(404).json({ message: 'Course not found' });
+//     }
     
-    if (course.status !== 'Published') {
-      return res.status(400).json({ message: 'Course is not published' });
-    }
+//     if (course.status !== 'Published') {
+//       return res.status(400).json({ message: 'Course is not published' });
+//     }
     
-    // Check if user is already enrolled
-    const existingEnrollment = await Enrollment.findOne({
-      userId: req.user._id,
-      courseId
-    });
+//     // Check if user is already enrolled
+//     const existingEnrollment = await Enrollment.findOne({
+//       userId: req.user._id,
+//       courseId
+//     });
     
-    if (existingEnrollment) {
-      return res.status(400).json({ message: 'You are already enrolled in this course' });
-    }
+//     if (existingEnrollment) {
+//       return res.status(400).json({ message: 'You are already enrolled in this course' });
+//     }
     
-    // Check if user has batch access
-    const userBatches = req.user.batches || [];
+//     // Check if user has batch access
+//     const userBatches = req.user.batches || [];
     
-    const batchAccess = await BatchCourse.findOne({
-      courseId,
-      batchId: { $in: userBatches }
-    });
+//     const batchAccess = await BatchCourse.findOne({
+//       courseId,
+//       batchId: { $in: userBatches }
+//     });
     
-    if (batchAccess) {
-      // Enroll via batch access
-      const enrollment = new Enrollment({
-        userId: req.user._id,
-        courseId,
-        enrollmentType: 'batch'
-      });
+//     if (batchAccess) {
+//       // Enroll via batch access
+//       const enrollment = new Enrollment({
+//         userId: req.user._id,
+//         courseId,
+//         enrollmentType: 'batch'
+//       });
       
-      // Set expiry date if batch subscription has an expiry
-      const batchSubscription = req.user.batchSubscriptions.find(
-        sub => userBatches.some(b => b.toString() === sub.batch.toString())
-      );
+//       // Set expiry date if batch subscription has an expiry
+//       const batchSubscription = req.user.batchSubscriptions.find(
+//         sub => userBatches.some(b => b.toString() === sub.batch.toString())
+//       );
       
-      if (batchSubscription && batchSubscription.expiresOn) {
-        enrollment.expiryDate = batchSubscription.expiresOn;
-      }
+//       if (batchSubscription && batchSubscription.expiresOn) {
+//         enrollment.expiryDate = batchSubscription.expiresOn;
+//       }
       
-      await enrollment.save();
+//       await enrollment.save();
       
-      // Increment enrolled count
-      course.enrolledCount++;
-      await course.save();
+//       // Increment enrolled count
+//       course.enrolledCount++;
+//       await course.save();
       
-      return res.status(201).json({
-        message: 'Enrolled successfully via batch access',
-        enrollment
-      });
-    }
+//       return res.status(201).json({
+//         message: 'Enrolled successfully via batch access',
+//         enrollment
+//       });
+//     }
     
-    // Check if course is free
-    if (course.price === 0) {
-      // Free enrollment
-      const enrollment = new Enrollment({
-        userId: req.user._id,
-        courseId,
-        enrollmentType: 'free'
-      });
+//     // Check if course is free
+//     if (course.price === 0) {
+//       // Free enrollment
+//       const enrollment = new Enrollment({
+//         userId: req.user._id,
+//         courseId,
+//         enrollmentType: 'free'
+//       });
       
-      await enrollment.save();
+//       await enrollment.save();
       
-      // Increment enrolled count
-      course.enrolledCount++;
-      await course.save();
+//       // Increment enrolled count
+//       course.enrolledCount++;
+//       await course.save();
       
-      return res.status(201).json({
-        message: 'Enrolled successfully in free course',
-        enrollment
-      });
-    }
+//       return res.status(201).json({
+//         message: 'Enrolled successfully in free course',
+//         enrollment
+//       });
+//     }
     
-    // For paid courses, create Razorpay order
-    if (!course.enableRazorpay) {
-      return res.status(400).json({ message: 'Payment is not enabled for this course' });
-    }
+//     // For paid courses, create Razorpay order
+//     if (!course.enableRazorpay) {
+//       return res.status(400).json({ message: 'Payment is not enabled for this course' });
+//     }
     
-    // Use sale price if available, otherwise use regular price
-    const amount = (course.salePrice || course.price) * 100; // Convert to paise
+//     // Use sale price if available, otherwise use regular price
+//     const amount = (course.salePrice || course.price) * 100; // Convert to paise
     
-    const options = {
-      amount,
-      currency: 'INR',
-      receipt: `course_${courseId}_user_${req.user._id}`,
-      payment_capture: 1
-    };
+//     const options = {
+//       amount,
+//       currency: 'INR',
+//       receipt: `course_${courseId}_user_${req.user._id}`,
+//       payment_capture: 1
+//     };
     
-    const razorpayOrder = await razorpay.orders.create(options);
+//     const razorpayOrder = await razorpay.orders.create(options);
     
-    // Create transaction record
-    const transaction = new Transaction({
-      userId: req.user._id,
-      courseId,
-      orderId: razorpayOrder.id,
-      razorpayOrderId: razorpayOrder.id,
-      amount: amount / 100, // Convert back to rupees for storage
-      currency: 'INR',
-      status: 'created'
-    });
+//     // Create transaction record
+//     const transaction = new Transaction({
+//       userId: req.user._id,
+//       courseId,
+//       orderId: razorpayOrder.id,
+//       razorpayOrderId: razorpayOrder.id,
+//       amount: amount / 100, // Convert back to rupees for storage
+//       currency: 'INR',
+//       status: 'created'
+//     });
     
-    await transaction.save();
+//     await transaction.save();
     
-    res.json({
-      message: 'Payment order created',
-      order: razorpayOrder,
-      transaction
-    });
-  } catch (error) {
-    console.error('Error enrolling in course:', error);
-    res.status(500).json({ message: 'Failed to enroll in course' });
-  }
-});
+//     res.json({
+//       message: 'Payment order created',
+//       order: razorpayOrder,
+//       transaction
+//     });
+//   } catch (error) {
+//     console.error('Error enrolling in course:', error);
+//     res.status(500).json({ message: 'Failed to enroll in course' });
+//   }
+// });
 
 router.get('/:courseId/preview', async (req, res) => {
   try {
@@ -695,128 +695,128 @@ router.get('/:courseId/preview', async (req, res) => {
   }
 });
 
-// Enrollment and payment routes
-router.post('/courses/:courseId/enroll', authenticate, async (req, res) => {
-  try {
-    const { courseId } = req.params;
+// // Enrollment and payment routes
+// router.post('/courses/:courseId/enroll', authenticate, async (req, res) => {
+//   try {
+//     const { courseId } = req.params;
     
-    const course = await Course.findById(courseId);
+//     const course = await Course.findById(courseId);
     
-    if (!course) {
-      return res.status(404).json({ message: 'Course not found' });
-    }
+//     if (!course) {
+//       return res.status(404).json({ message: 'Course not found' });
+//     }
     
-    if (course.status !== 'Published') {
-      return res.status(400).json({ message: 'Course is not published' });
-    }
+//     if (course.status !== 'Published') {
+//       return res.status(400).json({ message: 'Course is not published' });
+//     }
     
-    // Check if user is already enrolled
-    const existingEnrollment = await Enrollment.findOne({
-      userId: req.user._id,
-      courseId
-    });
+//     // Check if user is already enrolled
+//     const existingEnrollment = await Enrollment.findOne({
+//       userId: req.user._id,
+//       courseId
+//     });
     
-    if (existingEnrollment) {
-      return res.status(400).json({ message: 'You are already enrolled in this course' });
-    }
+//     if (existingEnrollment) {
+//       return res.status(400).json({ message: 'You are already enrolled in this course' });
+//     }
     
-    // Check if user has batch access
-    const userBatches = req.user.batches || [];
+//     // Check if user has batch access
+//     const userBatches = req.user.batches || [];
     
-    const batchAccess = await BatchCourse.findOne({
-      courseId,
-      batchId: { $in: userBatches }
-    });
+//     const batchAccess = await BatchCourse.findOne({
+//       courseId,
+//       batchId: { $in: userBatches }
+//     });
     
-    if (batchAccess) {
-      // Enroll via batch access
-      const enrollment = new Enrollment({
-        userId: req.user._id,
-        courseId,
-        enrollmentType: 'batch'
-      });
+//     if (batchAccess) {
+//       // Enroll via batch access
+//       const enrollment = new Enrollment({
+//         userId: req.user._id,
+//         courseId,
+//         enrollmentType: 'batch'
+//       });
       
-      // Set expiry date if batch subscription has an expiry
-      const batchSubscription = req.user.batchSubscriptions.find(
-        sub => userBatches.some(b => b.toString() === sub.batch.toString())
-      );
+//       // Set expiry date if batch subscription has an expiry
+//       const batchSubscription = req.user.batchSubscriptions.find(
+//         sub => userBatches.some(b => b.toString() === sub.batch.toString())
+//       );
       
-      if (batchSubscription && batchSubscription.expiresOn) {
-        enrollment.expiryDate = batchSubscription.expiresOn;
-      }
+//       if (batchSubscription && batchSubscription.expiresOn) {
+//         enrollment.expiryDate = batchSubscription.expiresOn;
+//       }
       
-      await enrollment.save();
+//       await enrollment.save();
       
-      // Increment enrolled count
-      course.enrolledCount++;
-      await course.save();
+//       // Increment enrolled count
+//       course.enrolledCount++;
+//       await course.save();
       
-      return res.status(201).json({
-        message: 'Enrolled successfully via batch access',
-        enrollment
-      });
-    }
+//       return res.status(201).json({
+//         message: 'Enrolled successfully via batch access',
+//         enrollment
+//       });
+//     }
     
-    // Check if course is free
-    if (course.price === 0) {
-      // Free enrollment
-      const enrollment = new Enrollment({
-        userId: req.user._id,
-        courseId,
-        enrollmentType: 'free'
-      });
+//     // Check if course is free
+//     if (course.price === 0) {
+//       // Free enrollment
+//       const enrollment = new Enrollment({
+//         userId: req.user._id,
+//         courseId,
+//         enrollmentType: 'free'
+//       });
       
-      await enrollment.save();
+//       await enrollment.save();
       
-      // Increment enrolled count
-      course.enrolledCount++;
-      await course.save();
+//       // Increment enrolled count
+//       course.enrolledCount++;
+//       await course.save();
       
-      return res.status(201).json({
-        message: 'Enrolled successfully in free course',
-        enrollment
-      });
-    }
+//       return res.status(201).json({
+//         message: 'Enrolled successfully in free course',
+//         enrollment
+//       });
+//     }
     
-    // For paid courses, create Razorpay order
-    if (!course.enableRazorpay) {
-      return res.status(400).json({ message: 'Payment is not enabled for this course' });
-    }
+//     // For paid courses, create Razorpay order
+//     if (!course.enableRazorpay) {
+//       return res.status(400).json({ message: 'Payment is not enabled for this course' });
+//     }
     
-    // Use sale price if available, otherwise use regular price
-    const amount = (course.salePrice || course.price) * 100; // Convert to paise
+//     // Use sale price if available, otherwise use regular price
+//     const amount = (course.salePrice || course.price) * 100; // Convert to paise
     
-    const options = {
-      amount,
-      currency: 'INR',
-      receipt: `course_${courseId}_user_${req.user._id}`,
-      payment_capture: 1
-    };
+//     const options = {
+//       amount,
+//       currency: 'INR',
+//       receipt: `course_${courseId}_user_${req.user._id}`,
+//       payment_capture: 1
+//     };
     
-    const razorpayOrder = await razorpay.orders.create(options);
+//     const razorpayOrder = await razorpay.orders.create(options);
     
-    // Create transaction record
-    const transaction = new Transaction({
-      userId: req.user._id,
-      courseId,
-      orderId: razorpayOrder.id,
-      razorpayOrderId: razorpayOrder.id,
-      amount: amount / 100, // Convert back to rupees for storage
-      currency: 'INR',
-      status: 'created'
-    });
+//     // Create transaction record
+//     const transaction = new Transaction({
+//       userId: req.user._id,
+//       courseId,
+//       orderId: razorpayOrder.id,
+//       razorpayOrderId: razorpayOrder.id,
+//       amount: amount / 100, // Convert back to rupees for storage
+//       currency: 'INR',
+//       status: 'created'
+//     });
     
-    await transaction.save();
+//     await transaction.save();
     
-    res.json({
-      message: 'Payment order created',
-      order: razorpayOrder,
-      transaction
-    });
-  } catch (error) {
-    console.error('Error enrolling in course:', error);
-    res.status(500).json({ message: 'Failed to enroll in course' });
-  }
-});
+//     res.json({
+//       message: 'Payment order created',
+//       order: razorpayOrder,
+//       transaction
+//     });
+//   } catch (error) {
+//     console.error('Error enrolling in course:', error);
+//     res.status(500).json({ message: 'Failed to enroll in course' });
+//   }
+// });
 
 export default router;
