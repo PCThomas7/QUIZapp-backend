@@ -17,6 +17,12 @@ const quizSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
+    // Add batch assignment configuration
+    batchAssignment: {
+        type: String,
+        enum: ['NONE', 'ALL', 'SPECIFIC'],
+        default: 'NONE'
+    },
     metadata: {
         header: { type: [String], default: [] },
         instructions: { type: [String], default: [] },
@@ -68,6 +74,46 @@ quizSchema.methods.getAttemptStats = async function() {
         highestScore: Math.max(...attempts.map(a => a.score), 0),
         completedAttempts: attempts.filter(a => a.completed).length
     };
+};
+
+// Add virtual for assigned batches
+quizSchema.virtual('assignedBatches', {
+    ref: 'QuizBatch',
+    localField: '_id',
+    foreignField: 'quiz'
+});
+
+// Add method to get assigned batches
+quizSchema.methods.getAssignedBatches = async function() {
+    if (this.batchAssignment === 'ALL') {
+        return await this.model('Batch').find({ active: true });
+    } else if (this.batchAssignment === 'SPECIFIC') {
+        const assignments = await this.model('QuizBatch').find({ quiz: this._id }).populate('batch');
+        return assignments.map(assignment => assignment.batch);
+    }
+    return [];
+};
+
+// Add method to assign batches
+quizSchema.methods.assignBatches = async function(batchIds) {
+    // First, remove existing assignments
+    await this.model('QuizBatch').deleteMany({ quiz: this._id });
+    
+    if (!batchIds || batchIds.length === 0) {
+        this.batchAssignment = 'NONE';
+    } else if (batchIds === 'ALL') {
+        this.batchAssignment = 'ALL';
+    } else {
+        this.batchAssignment = 'SPECIFIC';
+        // Create new assignments
+        await Promise.all(batchIds.map(batchId => 
+            this.model('QuizBatch').create({
+                quiz: this._id,
+                batch: batchId
+            })
+        ));
+    }
+    await this.save();
 };
 
 const Quiz = mongoose.model('Quiz', quizSchema);
