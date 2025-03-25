@@ -59,20 +59,20 @@ app.use(cors({
 app.use(express.json());
 
 // Import routes
-import authRoutes from './api/authRoutes.js';
-import batchRoutes from './api/batchRoutes.js';
-import userRoutes from './api/userRoutes.js';
-import exportRoutes from './api/getCsvRoutes.js';
-import invitationRoutes from './api/invitation.js';
-import emailRoutes from './api/sendMailRoutes.js';
-import courseRoutes from './api/courseRoutes.js';
-import sectionRoutes from './api/sectionRoutes.js';
-import chapterRoutes from './api/chapterRoutes.js';
-import lessonRoutes from './api/lessonRoutes.js';
-import questionRoutes from './api/questionRoutes.js';
-import tagRoutes from './api/TagRoutes.js';
-import QuizRoutes from './api/QuizRoutes.js';
-import studentRoutes from './api/studentRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import batchRoutes from './routes/batchRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import exportRoutes from './routes/getCsvRoutes.js';
+import invitationRoutes from './routes/invitation.js';
+import emailRoutes from './routes/sendMailRoutes.js';
+import courseRoutes from './routes/courseRoutes.js';
+import sectionRoutes from './routes/sectionRoutes.js';
+import chapterRoutes from './routes/chapterRoutes.js';
+import lessonRoutes from './routes/lessonRoutes.js';
+import questionRoutes from './routes/questionRoutes.js';
+import tagRoutes from './routes/TagRoutes.js';
+import QuizRoutes from './routes/QuizRoutes.js';
+import studentRoutes from './routes/studentRoutes.js';
 
 
 // Increase payload size limit
