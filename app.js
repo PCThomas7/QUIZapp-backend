@@ -104,63 +104,63 @@ app.get('/', (req, res) => {
     res.send('API running');
 });
 
-// Payment verification route
-app.post('/payment/verify', authenticate, async (req, res) => {
-    try {
-        const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+// // Payment verification route
+// app.post('/payment/verify', authenticate, async (req, res) => {
+//     try {
+//         const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
         
-        // Find transaction
-        const transaction = await Transaction.findOne({ razorpayOrderId });
+//         // Find transaction
+//         const transaction = await Transaction.findOne({ razorpayOrderId });
         
-        if (!transaction) {
-            return res.status(404).json({ message: 'Transaction not found' });
-        }
+//         if (!transaction) {
+//             return res.status(404).json({ message: 'Transaction not found' });
+//         }
         
-        // Verify signature
-        const generatedSignature = crypto
-            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-            .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-            .digest('hex');
+//         // Verify signature
+//         const generatedSignature = crypto
+//             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+//             .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+//             .digest('hex');
             
-        if (generatedSignature !== razorpaySignature) {
-            transaction.status = 'failed';
-            await transaction.save();
+//         if (generatedSignature !== razorpaySignature) {
+//             transaction.status = 'failed';
+//             await transaction.save();
             
-            return res.status(400).json({ message: 'Invalid payment signature' });
-        }
+//             return res.status(400).json({ message: 'Invalid payment signature' });
+//         }
         
-        // Update transaction
-        transaction.razorpayPaymentId = razorpayPaymentId;
-        transaction.razorpaySignature = razorpaySignature;
-        transaction.status = 'captured';
-        transaction.paymentId = razorpayPaymentId;
-        await transaction.save();
+//         // Update transaction
+//         transaction.razorpayPaymentId = razorpayPaymentId;
+//         transaction.razorpaySignature = razorpaySignature;
+//         transaction.status = 'captured';
+//         transaction.paymentId = razorpayPaymentId;
+//         await transaction.save();
         
-        // Create enrollment
-        const enrollment = new Enrollment({
-            userId: transaction.userId,
-            courseId: transaction.courseId,
-            enrollmentType: 'paid',
-            transactionId: transaction._id
-        });
+//         // Create enrollment
+//         const enrollment = new Enrollment({
+//             userId: transaction.userId,
+//             courseId: transaction.courseId,
+//             enrollmentType: 'paid',
+//             transactionId: transaction._id
+//         });
         
-        await enrollment.save();
+//         await enrollment.save();
         
-        // Increment enrolled count
-        const course = await Course.findById(transaction.courseId);
-        course.enrolledCount++;
-        await course.save();
+//         // Increment enrolled count
+//         const course = await Course.findById(transaction.courseId);
+//         course.enrolledCount++;
+//         await course.save();
         
-        res.json({
-            message: 'Payment verified and enrollment successful',
-            transaction,
-            enrollment
-        });
-    } catch (error) {
-        console.error('Error verifying payment:', error);
-        res.status(500).json({ message: 'Failed to verify payment' });
-    }
-});
+//         res.json({
+//             message: 'Payment verified and enrollment successful',
+//             transaction,
+//             enrollment
+//         });
+//     } catch (error) {
+//         console.error('Error verifying payment:', error);
+//         res.status(500).json({ message: 'Failed to verify payment' });
+//     }
+// });
 
 // Database connection
 mongoose.connection.once('open', () => {
