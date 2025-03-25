@@ -421,7 +421,87 @@ const getQuizAttemptDetails = async (req, res) => {
     }
 };
 
-// Add these methods to the export
+// Add these methods to your QuizController.js file
+
+// Add batch assignment methods
+const assignQuizToBatches = async (req, res) => {
+    try {
+        const { id: quizId } = req.params;
+        const { batchAssignment, batchIds } = req.body;
+        
+        // Find the quiz
+        const quiz = await Quiz.findOne({ id: quizId });
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+        
+        // Update the quiz's batch assignment type
+        quiz.batchAssignment = batchAssignment;
+        await quiz.save();
+        
+        // If specific batches are assigned, create the relationships
+        if (batchAssignment === 'SPECIFIC' && Array.isArray(batchIds)) {
+            // First remove existing assignments
+            await mongoose.model('QuizBatch').deleteMany({ quiz: quiz._id });
+            
+            // Create new assignments
+            if (batchIds.length > 0) {
+                await mongoose.model('QuizBatch').assignQuizToBatches(
+                    quiz._id,
+                    batchIds,
+                    req.user?._id
+                );
+            }
+        } else if (batchAssignment === 'NONE' || batchAssignment === 'ALL') {
+            // Remove all specific assignments if set to NONE or ALL
+            await mongoose.model('QuizBatch').deleteMany({ quiz: quiz._id });
+        }
+        
+        res.json({ 
+            message: 'Quiz batch assignments updated successfully',
+            batchAssignment,
+            assignedBatches: batchAssignment === 'SPECIFIC' ? batchIds : []
+        });
+    } catch (error) {
+        console.error('Error assigning quiz to batches:', error);
+        res.status(500).json({ message: 'Failed to assign quiz to batches' });
+    }
+};
+
+const getQuizBatches = async (req, res) => {
+    try {
+        const { id: quizId } = req.params;
+        
+        // Find the quiz
+        const quiz = await Quiz.findOne({ id: quizId });
+        if (!quiz) {
+            return res.status(404).json({ message: 'Quiz not found' });
+        }
+        
+        // Get batch assignment type
+        const batchAssignment = quiz.batchAssignment || 'NONE';
+        
+        // If specific batches, get the assigned batches
+        let assignedBatches = [];
+        if (batchAssignment === 'SPECIFIC') {
+            const assignments = await mongoose.model('QuizBatch')
+                .find({ quiz: quiz._id })
+                .populate('batch');
+            
+            assignedBatches = assignments.map(a => a.batch._id.toString());
+        }
+        
+        res.json({
+            batchAssignment,
+            assignedBatches
+        });
+    } catch (error) {
+        console.error('Error fetching quiz batches:', error);
+        res.status(500).json({ message: 'Failed to fetch quiz batches' });
+    }
+};
+
+// Export the new methods
 export default {
     createQuiz,
     getQuizzes,
@@ -431,5 +511,8 @@ export default {
     submitQuizAttempt,
     getAllQuizAttempts,
     getUserQuizAttempts,
-    getQuizAttemptDetails
+    getQuizAttemptDetails,
+    // New methods
+    assignQuizToBatches,
+    getQuizBatches
 };

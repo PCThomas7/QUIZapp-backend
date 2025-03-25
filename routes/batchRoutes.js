@@ -114,4 +114,26 @@ batchRouter.delete('/:id', authenticate, authorizeRoles('Super Admin'), async (r
   }
 });
 
+// Add this route to get quizzes assigned to a batch
+
+// Get quizzes assigned to a batch
+batchRouter.get('/:id/quizzes', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the batch
+    const batch = await Batch.findById(id);
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+    
+    // Get assigned quizzes
+    const quizzes = await batch.getAssignedQuizzes();
+    
+    res.json({ quizzes });
+  } catch (error) {
+    console.error('Error fetching batch quizzes:', error);
+    res.status(500).json({ message: 'Failed to fetch batch quizzes' });
+  }
+});
 export default batchRouter;

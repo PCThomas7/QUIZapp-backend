@@ -1,6 +1,6 @@
 import express from 'express';
 import QuizController from '../controllers/QuizController.js';
-import { authenticate } from '../middleware/authMiddleWare.js';
+import { authenticate, authorizeRoles } from '../middleware/authMiddleWare.js';
 
 const router = express.Router();
 
@@ -16,6 +16,10 @@ router.post('/:id/attempts', authenticate, QuizController.submitQuizAttempt);
 router.get('/:id/attempts', authenticate, QuizController.getAllQuizAttempts);
 router.get('/:id/attempts/me', authenticate, QuizController.getUserQuizAttempts);
 router.get('/attempts/:id', authenticate, QuizController.getQuizAttemptDetails);
+
+// Quiz Batch Assignment routes
+router.post('/:id/batches', authenticate, authorizeRoles('Admin', 'Super Admin'), QuizController.assignQuizToBatches);
+router.get('/:id/batches', authenticate, QuizController.getQuizBatches);
 
 // Uncomment these when you implement them
 // // Quiz Questions operations
