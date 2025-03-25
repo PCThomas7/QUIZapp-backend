@@ -2,6 +2,7 @@ import Quiz from '../models/Quiz.js';
 import QuizAttempt from '../models/QuizAttempt.js';
 import { v4 as uuidv4 } from 'uuid'; // Add this import at the top
 import QuestionBank from '../models/QuestionBank.js';
+import {QuizBatch,Batch} from '../db/db.js'
 
 const createQuiz = async (req, res) => {
     try {
@@ -9,24 +10,25 @@ const createQuiz = async (req, res) => {
             title,
             description,
             total_duration,
-            passingScore,
+            timeLimit,
             header,
             instructions,
             footer,
             watermark,
             sections,
-            createdBy
+            createdBy,
+            batchAssignment,
+            assignedBatches
         } = req.body;
 
         // Create new quiz with unique ID
         const newQuiz = new Quiz({
-            id: uuidv4(), // Generate unique ID
+            id: uuidv4(),
             title,
             description,
-            total_duration: total_duration || 0,
-            timeLimit: total_duration || 0,
-            passingScore: passingScore || 70,
+            timeLimit: timeLimit || total_duration || 0,
             createdBy,
+            batchAssignment: batchAssignment || 'NONE',
             metadata: {
                 header: header || [],
                 instructions: instructions || [],
@@ -43,10 +45,19 @@ const createQuiz = async (req, res) => {
             }))
         });
 
-        // Save to database
+        // Save quiz first
         const savedQuiz = await newQuiz.save();
-        
-        // Update QuestionBank documents to include this quiz in usedInQuizzes
+
+        // Handle batch assignments if specified
+        if (batchAssignment === 'SPECIFIC' && Array.isArray(assignedBatches) && assignedBatches.length > 0) {
+            await QuizBatch.assignQuizToBatches(
+                savedQuiz._id,
+                assignedBatches,
+                createdBy
+            );
+        }
+
+        // Update QuestionBank references
         if (sections && sections.length > 0) {
             const questionIds = sections.reduce((acc, section) => {
                 return acc.concat(section.questions || []);
@@ -57,10 +68,21 @@ const createQuiz = async (req, res) => {
                 { $addToSet: { usedInQuizzes: savedQuiz._id } }
             );
         }
-        
+
+        // Fetch the complete quiz with populated data
+        const populatedQuiz = await Quiz.findById(savedQuiz._id)
+            .populate('createdBy', 'name email')
+            .populate({
+                path: 'sections.questions',
+                model: 'QuestionBank'
+            });
+
         res.status(201).json({
             message: 'Quiz created successfully',
-            quiz: savedQuiz
+            quiz: {
+                ...populatedQuiz.toObject(),
+                id: populatedQuiz._id
+            }
         });
     } catch (error) {
         console.error('Error creating quiz:', error);
@@ -427,10 +449,13 @@ const getQuizAttemptDetails = async (req, res) => {
 const assignQuizToBatches = async (req, res) => {
     try {
         const { id: quizId } = req.params;
-        const { batchAssignment, batchIds } = req.body;
+        const { batchAssignment, assignedBatches } = req.body;
         
-        // Find the quiz
-        const quiz = await Quiz.findOne({ id: quizId });
+        // Find the quiz using either MongoDB ID or UUID
+        const quiz = await Quiz.findOne({ 
+            $or: [{ _id: quizId }, { id: quizId }]
+        });
+
         if (!quiz) {
             return res.status(404).json({ message: 'Quiz not found' });
         }
@@ -439,28 +464,37 @@ const assignQuizToBatches = async (req, res) => {
         quiz.batchAssignment = batchAssignment;
         await quiz.save();
         
-        // If specific batches are assigned, create the relationships
-        if (batchAssignment === 'SPECIFIC' && Array.isArray(batchIds)) {
-            // First remove existing assignments
-            await mongoose.model('QuizBatch').deleteMany({ quiz: quiz._id });
+        // Handle batch assignments based on type
+        if (batchAssignment === 'SPECIFIC' && Array.isArray(assignedBatches)) {
+            // Remove existing assignments
+            await QuizBatch.deleteMany({ quiz: quiz._id });
             
-            // Create new assignments
-            if (batchIds.length > 0) {
-                await mongoose.model('QuizBatch').assignQuizToBatches(
+            // Create new assignments if batches are specified
+            if (assignedBatches.length > 0) {
+                await QuizBatch.assignQuizToBatches(
                     quiz._id,
-                    batchIds,
+                    assignedBatches,
                     req.user?._id
                 );
             }
-        } else if (batchAssignment === 'NONE' || batchAssignment === 'ALL') {
-            // Remove all specific assignments if set to NONE or ALL
-            await mongoose.model('QuizBatch').deleteMany({ quiz: quiz._id });
+        } else {
+            // Remove all specific assignments for NONE or ALL
+            await QuizBatch.deleteMany({ quiz: quiz._id });
         }
+        
+        // Get updated assignments for response
+        const updatedAssignments = batchAssignment === 'SPECIFIC' 
+            ? await QuizBatch.find({ quiz: quiz._id })
+                .populate('batch', 'name')
+            : [];
         
         res.json({ 
             message: 'Quiz batch assignments updated successfully',
             batchAssignment,
-            assignedBatches: batchAssignment === 'SPECIFIC' ? batchIds : []
+            assignedBatches: updatedAssignments.map(a => ({
+                id: a.batch._id,
+                name: a.batch.name
+            }))
         });
     } catch (error) {
         console.error('Error assigning quiz to batches:', error);
@@ -501,6 +535,43 @@ const getQuizBatches = async (req, res) => {
     }
 };
 
+// Add new controller method
+const updateQuestionUsage = async (req, res) => {
+  try {
+    const { quizId, questionIds } = req.body;
+    
+    // Find by MongoDB ID first, then fallback to UUID
+    const quiz = await Quiz.findOne({ 
+      $or: [{ _id: quizId }, { id: quizId }]
+    });
+    
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: 'Quiz not found'
+      });
+    }
+    
+    // Use the MongoDB _id for relationship
+    const result = await QuestionBank.updateMany(
+      { id: { $in: questionIds } },
+      { $addToSet: { usedInQuizzes: quiz._id } }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Updated quiz usage for ${result.modifiedCount} questions`
+    });
+  } catch (error) {
+    console.error('Error updating question usage:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating question usage',
+      error: error.message
+    });
+  }
+};
+
 // Export the new methods
 export default {
     createQuiz,
@@ -514,5 +585,6 @@ export default {
     getQuizAttemptDetails,
     // New methods
     assignQuizToBatches,
-    getQuizBatches
+    getQuizBatches,
+    updateQuestionUsage
 };

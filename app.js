@@ -72,11 +72,12 @@ import lessonRoutes from './routes/lessonRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import tagRoutes from './routes/TagRoutes.js';
 import QuizRoutes from './routes/QuizRoutes.js';
+import studentRoutes from './routes/studentRoutes.js';
 
 
 // Increase payload size limit
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 
 
@@ -94,6 +95,8 @@ app.use('/api/lessons', lessonRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/tags', tagRoutes);
 app.use('/api/quizzes', QuizRoutes);
+// Add student routes
+app.use('/api/student', authenticate, authorizeRoles('Student'), studentRoutes);
 
 
 // Base route
@@ -171,5 +174,6 @@ mongoose.connection.once('open', () => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
+
 
 export default app;

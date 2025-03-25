@@ -16,6 +16,7 @@ import QuizAttempt from '../models/QuizAttempt.js';
 import ProgressTracking from '../models/ProgressTracking.js';
 import QuestionBank from '../models/QuestionBank.js';
 import TagSystem from '../models/TagSystem.js';
+import QuizBatch from '../models/QuizBatch.js';
 
 dotenv.config();
 
@@ -39,5 +40,6 @@ export {
     QuizAttempt,
     ProgressTracking,
     QuestionBank,
-    TagSystem
+    TagSystem,
+    QuizBatch
 };
