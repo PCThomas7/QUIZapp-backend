@@ -20,6 +20,42 @@
   ],
   "routes": [
     {
+      "src": "/api/auth/(.*)",
+      "dest": "/routes/authRoutes.js"
+    },
+    {
+      "src": "/api/batches/(.*)",
+      "dest": "/routes/batchRoutes.js"
+    },
+    {
+      "src": "/api/courses/(.*)",
+      "dest": "/routes/courseRoutes.js"
+    },
+    {
+      "src": "/api/quizzes/(.*)",
+      "dest": "/routes/QuizRoutes.js"
+    },
+    {
+      "src": "/api/questions/(.*)",
+      "dest": "/routes/questionRoutes.js"
+    },
+    {
+      "src": "/api/tags/(.*)",
+      "dest": "/routes/TagRoutes.js"
+    },
+    {
+      "src": "/api/student/(.*)",
+      "dest": "/routes/studentRoutes.js"
+    },
+    {
+      "src": "/api/export/(.*)",
+      "dest": "/routes/getCsvRoutes.js"
+    },
+    {
+      "src": "/api/mail/(.*)",
+      "dest": "/routes/sendMailRoutes.js"
+    },
+    {
       "src": "/api/(.*)",
       "headers": {
         "Access-Control-Allow-Origin": "*",
