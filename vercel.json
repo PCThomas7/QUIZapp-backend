@@ -1,16 +1,34 @@
 {
-    "version": 2,
-    "builds": [
-     {
+  "version": 2,
+  "builds": [
+    {
       "src": "app.js",
       "use": "@vercel/node",
-      "config": { "includeFiles": ["dist/**"] }
-     }
-    ],
-    "routes": [
-     {
+      "config": {
+        "includeFiles": [
+          "**/*.js",
+          "controllers/**/*.js",
+          "routes/**/*.js",
+          "models/**/*.js",
+          "middleware/**/*.js",
+          "utilits/**/*.js",
+          "scripts/**/*.js",
+          "db/**/*.js"
+        ]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "app.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "app.js"
-     }
-    ]
-   }
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
