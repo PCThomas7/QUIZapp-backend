@@ -2,6 +2,7 @@ import Quiz from '../models/Quiz.js';
 import User from '../models/User.js';
 import Batch from '../models/Batch.js';
 import QuizBatch from '../models/QuizBatch.js';
+import QuizAttempt from '../models/QuizAttempt.js'; // Add this import
 
 const studentController = {
   getStudentQuizzes: async (req, res) => {
@@ -30,12 +31,28 @@ const studentController = {
         model: 'QuestionBank'
       });
 
+      // Get all quiz attempts by this student
+      const attempts = await QuizAttempt.find({
+        user: studentId
+      });
+
+      // Create a map of quiz IDs to attempts
+      const attemptMap = new Map();
+      attempts.forEach(attempt => {
+        attemptMap.set(attempt.quiz.toString(), attempt);
+      });
+
       // Transform quizzes for frontend
       const transformedQuizzes = quizzes.map(quiz => {
         const quizObj = quiz.toObject();
+        const quizId = quizObj._id.toString();
+        const hasAttempted = attemptMap.has(quizId);
+        
         return {
           ...quizObj,
           id: quizObj._id,
+          attempted: hasAttempted,
+          userScore: hasAttempted ? Math.round((attemptMap.get(quizId).score / attemptMap.get(quizId).maxScore) * 100) : 0,
           sections: quizObj.sections.map(section => ({
             ...section,
             id: section._id
