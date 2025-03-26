@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Batch from '../models/Batch.js';
 import QuizBatch from '../models/QuizBatch.js';
 import QuizAttempt from '../models/QuizAttempt.js';
+import QuestionBank from '../models/QuestionBank.js';
 
 const studentController = {
   getStudentQuizzes: async (req, res) => {
@@ -299,7 +300,94 @@ const studentController = {
         error: error.message
       });
     }
-  }
+  },
+  getStudentCreatedQuizzes: async (req, res) => {
+    try {
+      const studentId = req.user._id;
+  
+      // Get quizzes created by this student
+      const quizzes = await Quiz.find({
+        createdBy: studentId
+      }).populate({
+        path: 'sections.questions',
+        model: 'QuestionBank'
+      });
+  
+      // Transform quizzes for frontend
+      const transformedQuizzes = quizzes.map(quiz => {
+        const quizObj = quiz.toObject();
+        
+        return {
+          ...quizObj,
+          id: quizObj._id,
+          sections: quizObj.sections.map(section => ({
+            ...section,
+            id: section._id
+          }))
+        };
+      });
+  
+      res.status(200).json({
+        message: 'Student created quizzes fetched successfully',
+        quizzes: transformedQuizzes
+      });
+    } catch (error) {
+      console.error('Error fetching student created quizzes:', error);
+      res.status(500).json({
+        message: 'Failed to fetch student created quizzes',
+        error: error.message
+      });
+    }
+  },
+  
+  deleteStudentQuiz: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const studentId = req.user._id;
+  
+      // Find the quiz and check ownership
+      const quiz = await Quiz.findById(id);
+      
+      if (!quiz) {
+        return res.status(404).json({ message: 'Quiz not found' });
+      }
+  
+      // Verify the student is the creator of the quiz
+      if (quiz.createdBy.toString() !== studentId.toString()) {
+        return res.status(403).json({ message: 'Not authorized to delete this quiz' });
+      }
+  
+      // Remove quiz references from QuestionBank
+      if (quiz.sections && quiz.sections.length > 0) {
+        const questionIds = quiz.sections.reduce((acc, section) => {
+          return acc.concat(section.questions || []);
+        }, []);
+  
+        await QuestionBank.updateMany(
+          { _id: { $in: questionIds } },
+          { $pull: { usedInQuizzes: quiz._id } }
+        );
+      }
+  
+      // Delete quiz attempts
+      await QuizAttempt.deleteMany({ quiz: id });
+  
+      // Delete quiz
+      await Quiz.findByIdAndDelete(id);
+  
+      res.status(200).json({ message: 'Quiz deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting student quiz:', error);
+      res.status(500).json({ 
+        message: 'Failed to delete quiz',
+        error: error.message 
+      });
+    }
+  },
 };
+
+
+
+
 
 export default studentController;
