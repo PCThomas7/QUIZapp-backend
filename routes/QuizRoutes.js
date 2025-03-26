@@ -20,6 +20,11 @@ router.get(
   QuizController.getUserQuizAttempts
 );
 router.get("/attempts/:id", authenticate, QuizController.getQuizAttemptDetails);
+router.get(
+  "/:id/attempts/me/report",
+  authenticate,
+  QuizController.getDetailedQuizReport
+);
 
 // Quiz Batch Assignment routes
 router.post(

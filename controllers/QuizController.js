@@ -572,6 +572,278 @@ const updateQuestionUsage = async (req, res) => {
   }
 };
 
+// Add this method to your QuizController
+const getDetailedQuizReport = async (req, res) => {
+    try {
+      const quizId = req.params.id;
+      const userId = req.user._id;
+  
+      // Get the quiz
+      const quiz = await Quiz.findById(quizId).populate({
+        path: 'sections.questions',
+        model: 'QuestionBank'
+      });
+  
+      if (!quiz) {
+        return res.status(404).json({ message: 'Quiz not found' });
+      }
+  
+      // Get the user's most recent attempt
+      const attempts = await QuizAttempt.find({ quiz: quizId, user: userId })
+        .sort({ submittedAt: -1 });
+  
+      if (!attempts || attempts.length === 0) {
+        return res.status(404).json({ message: 'No attempts found for this quiz' });
+      }
+  
+      const attempt = attempts[0];
+  
+      // Extract all questions from the quiz
+      const allQuestions = [];
+      quiz.sections.forEach(section => {
+        section.questions.forEach(question => {
+          allQuestions.push(question);
+        });
+      });
+  
+      // Calculate overall performance
+      const totalQuestions = allQuestions.length;
+      const userAnswers = attempt.answers;
+      
+      let correctAnswers = 0;
+      let incorrectAnswers = 0;
+      let unattempted = 0;
+      let score = 0;
+      let maxScore = 0;
+  
+      // Group questions by different categories
+      const subjectMap = new Map();
+      const chapterMap = new Map();
+      const topicMap = new Map();
+      const difficultyMap = new Map();
+      const questionTypeMap = new Map();
+  
+      allQuestions.forEach(question => {
+        const questionId = question._id.toString();
+        const userAnswer = userAnswers.get(questionId) || [];
+        const isCorrect = userAnswer.length > 0 && userAnswer.join(',') === question.correct_answer;
+        const isAttempted = userAnswer.length > 0;
+        
+        // Calculate marks based on section configuration
+        const section = quiz.sections.find(s => 
+          s.questions.some(q => q._id.toString() === questionId)
+        );
+        
+        const marks = section?.marks || 1;
+        const negativeMarks = section?.negativeMarks || 0;
+        
+        maxScore += marks;
+        
+        if (isCorrect) {
+          correctAnswers++;
+          score += marks;
+        } else if (isAttempted) {
+          incorrectAnswers++;
+          score -= negativeMarks;
+        } else {
+          unattempted++;
+        }
+  
+        // Group by subject
+        const subject = question.tags.subject || 'Uncategorized';
+        if (!subjectMap.has(subject)) {
+          subjectMap.set(subject, {
+            subject,
+            totalQuestions: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0,
+            unattempted: 0,
+            score: 0,
+            maxScore: 0
+          });
+        }
+        const subjectData = subjectMap.get(subject);
+        subjectData.totalQuestions++;
+        subjectData.maxScore += marks;
+        if (isCorrect) {
+          subjectData.correctAnswers++;
+          subjectData.score += marks;
+        } else if (isAttempted) {
+          subjectData.incorrectAnswers++;
+          subjectData.score -= negativeMarks;
+        } else {
+          subjectData.unattempted++;
+        }
+  
+        // Group by chapter
+        const chapter = question.tags.chapter || 'Uncategorized';
+        const chapterKey = `${subject}:${chapter}`;
+        if (!chapterMap.has(chapterKey)) {
+          chapterMap.set(chapterKey, {
+            chapter,
+            subject,
+            totalQuestions: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0,
+            unattempted: 0,
+            score: 0,
+            maxScore: 0
+          });
+        }
+        const chapterData = chapterMap.get(chapterKey);
+        chapterData.totalQuestions++;
+        chapterData.maxScore += marks;
+        if (isCorrect) {
+          chapterData.correctAnswers++;
+          chapterData.score += marks;
+        } else if (isAttempted) {
+          chapterData.incorrectAnswers++;
+          chapterData.score -= negativeMarks;
+        } else {
+          chapterData.unattempted++;
+        }
+  
+        // Group by topic
+        const topic = question.tags.topic || 'Uncategorized';
+        const topicKey = `${subject}:${chapter}:${topic}`;
+        if (!topicMap.has(topicKey)) {
+          topicMap.set(topicKey, {
+            topic,
+            chapter,
+            subject,
+            totalQuestions: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0,
+            unattempted: 0,
+            score: 0,
+            maxScore: 0
+          });
+        }
+        const topicData = topicMap.get(topicKey);
+        topicData.totalQuestions++;
+        topicData.maxScore += marks;
+        if (isCorrect) {
+          topicData.correctAnswers++;
+          topicData.score += marks;
+        } else if (isAttempted) {
+          topicData.incorrectAnswers++;
+          topicData.score -= negativeMarks;
+        } else {
+          topicData.unattempted++;
+        }
+  
+        // Group by difficulty
+        const difficulty = question.tags.difficulty_level || 'Uncategorized';
+        if (!difficultyMap.has(difficulty)) {
+          difficultyMap.set(difficulty, {
+            difficulty,
+            totalQuestions: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0,
+            unattempted: 0,
+            score: 0,
+            maxScore: 0
+          });
+        }
+        const difficultyData = difficultyMap.get(difficulty);
+        difficultyData.totalQuestions++;
+        difficultyData.maxScore += marks;
+        if (isCorrect) {
+          difficultyData.correctAnswers++;
+          difficultyData.score += marks;
+        } else if (isAttempted) {
+          difficultyData.incorrectAnswers++;
+          difficultyData.score -= negativeMarks;
+        } else {
+          difficultyData.unattempted++;
+        }
+  
+        // Group by question type
+        const questionType = question.tags.question_type || 'Uncategorized';
+        if (!questionTypeMap.has(questionType)) {
+          questionTypeMap.set(questionType, {
+            questionType,
+            totalQuestions: 0,
+            correctAnswers: 0,
+            incorrectAnswers: 0,
+            unattempted: 0,
+            score: 0,
+            maxScore: 0
+          });
+        }
+        const questionTypeData = questionTypeMap.get(questionType);
+        questionTypeData.totalQuestions++;
+        questionTypeData.maxScore += marks;
+        if (isCorrect) {
+          questionTypeData.correctAnswers++;
+          questionTypeData.score += marks;
+        } else if (isAttempted) {
+          questionTypeData.incorrectAnswers++;
+          questionTypeData.score -= negativeMarks;
+        } else {
+          questionTypeData.unattempted++;
+        }
+      });
+  
+      // Calculate percentages for each category
+      const subjectPerformance = Array.from(subjectMap.values()).map(subject => ({
+        ...subject,
+        percentage: (subject.score / subject.maxScore) * 100 || 0
+      }));
+  
+      const chapterPerformance = Array.from(chapterMap.values()).map(chapter => ({
+        ...chapter,
+        percentage: (chapter.score / chapter.maxScore) * 100 || 0
+      }));
+  
+      const topicPerformance = Array.from(topicMap.values()).map(topic => ({
+        ...topic,
+        percentage: (topic.score / topic.maxScore) * 100 || 0
+      }));
+  
+      const difficultyPerformance = Array.from(difficultyMap.values()).map(difficulty => ({
+        ...difficulty,
+        percentage: (difficulty.score / difficulty.maxScore) * 100 || 0
+      }));
+  
+      const questionTypePerformance = Array.from(questionTypeMap.values()).map(questionType => ({
+        ...questionType,
+        percentage: (questionType.score / questionType.maxScore) * 100 || 0
+      }));
+  
+      // Prepare the detailed report
+      const detailedReport = {
+        overallPerformance: {
+          totalQuestions,
+          correctAnswers,
+          incorrectAnswers,
+          unattempted,
+          score,
+          maxScore,
+          percentage: (score / maxScore) * 100 || 0,
+          timeSpent: attempt.timeSpent || 0
+        },
+        subjectWisePerformance: subjectPerformance,
+        chapterWisePerformance: chapterPerformance,
+        topicWisePerformance: topicPerformance,
+        difficultyWisePerformance: difficultyPerformance,
+        questionTypePerformance: questionTypePerformance
+      };
+  
+      res.status(200).json({
+        message: 'Detailed quiz report fetched successfully',
+        report: detailedReport,
+        attemptId: attempt._id
+      });
+    } catch (error) {
+      console.error('Error generating detailed quiz report:', error);
+      res.status(500).json({
+        message: 'Failed to generate detailed quiz report',
+        error: error.message
+      });
+    }
+  };
+
 // Export the new methods
 export default {
     createQuiz,
@@ -583,7 +855,7 @@ export default {
     getAllQuizAttempts,
     getUserQuizAttempts,
     getQuizAttemptDetails,
-    // New methods
+    getDetailedQuizReport,
     assignQuizToBatches,
     getQuizBatches,
     updateQuestionUsage
