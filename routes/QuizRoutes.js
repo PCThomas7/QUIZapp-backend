@@ -39,7 +39,7 @@ router.get("/:id/batches", authenticate, QuizController.getQuizBatches);
 router.post(
     "/update-quiz-usage",
     authenticate,
-    authorizeRoles("Admin", "Super Admin"),
+    authorizeRoles("Admin", "Super Admin",),
     QuizController.updateQuestionUsage
   );
 
