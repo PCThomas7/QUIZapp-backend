@@ -3,6 +3,7 @@ import QuizAttempt from '../models/QuizAttempt.js';
 import { v4 as uuidv4 } from 'uuid'; // Add this import at the top
 import QuestionBank from '../models/QuestionBank.js';
 import {QuizBatch,Batch} from '../db/db.js'
+import mongoose from 'mongoose';
 
 const createQuiz = async (req, res) => {
     try {
@@ -506,8 +507,9 @@ const getQuizBatches = async (req, res) => {
     try {
         const { id: quizId } = req.params;
         
+        
         // Find the quiz
-        const quiz = await Quiz.findOne({ id: quizId });
+        const quiz = await Quiz.findOne({ _id: quizId });
         if (!quiz) {
             return res.status(404).json({ message: 'Quiz not found' });
         }
