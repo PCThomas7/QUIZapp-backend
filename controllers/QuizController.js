@@ -460,7 +460,101 @@ const getQuizAttemptDetails = async (req, res) => {
     }
 };
 
-// Add these methods to your QuizController.js file
+// Add these methods to your existing quizController.js file
+
+// Schedule a quiz
+ const scheduleQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+    const { startDate, endDate } = req.body;
+    const userId = req.user.id;
+
+    // Validate input
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start and end dates are required' });
+    }
+
+    // Find the quiz
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: 'Quiz not found' });
+    }
+
+    // Check if user is authorized to schedule this quiz
+    if (quiz.createdBy.toString() !== userId && req.user.role !== 'Admin') {
+      return res.status(403).json({ message: 'Not authorized to schedule this quiz' });
+    }
+
+    // Update quiz with scheduling information
+    quiz.isScheduled = true;
+    quiz.startDate = new Date(startDate);
+    quiz.endDate = new Date(endDate);
+    await quiz.save();
+
+    return res.status(200).json({
+      message: 'Quiz scheduled successfully',
+      quiz
+    });
+  } catch (error) {
+    console.error('Error scheduling quiz:', error);
+    return res.status(500).json({ message: 'Failed to schedule quiz' });
+  }
+};
+
+// Get quiz schedule
+ const getQuizSchedule = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    // Find the quiz
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      return res.status(404).json({ message: 'Quiz not found' });
+    }
+
+    // Return scheduling information
+    return res.status(200).json({
+      isScheduled: quiz.isScheduled || false,
+      startDate: quiz.startDate,
+      endDate: quiz.endDate,
+      calendarEventId: quiz.calendarEventId
+    });
+  } catch (error) {
+    console.error('Error fetching quiz schedule:', error);
+    return res.status(500).json({ message: 'Failed to fetch quiz schedule' });
+  }
+};
+
+// Get upcoming quizzes for a student
+export const getUpcomingQuizzes = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const now = new Date();
+
+    // Find all quizzes that:
+    // 1. Are scheduled
+    // 2. End date is in the future
+    // 3. Are assigned to the student's batch or are public
+    const userBatches = await Batch.find({ students: userId }).select('_id');
+    const batchIds = userBatches.map(batch => batch._id);
+
+    const quizzes = await Quiz.find({
+      isScheduled: true,
+      endDate: { $gte: now },
+      $or: [
+        { batchAssignment: 'ALL' },
+        { batchAssignment: 'SPECIFIC', assignedBatches: { $in: batchIds } }
+      ]
+    }).sort({ startDate: 1 });
+
+    return res.status(200).json({
+      quizzes
+    });
+  } catch (error) {
+    console.error('Error fetching upcoming quizzes:', error);
+    return res.status(500).json({ message: 'Failed to fetch upcoming quizzes' });
+  }
+};
 
 // Add batch assignment methods
 const assignQuizToBatches = async (req, res) => {
@@ -876,5 +970,8 @@ export default {
     getDetailedQuizReport,
     assignQuizToBatches,
     getQuizBatches,
-    updateQuestionUsage
+    updateQuestionUsage,
+    scheduleQuiz,
+    getUpcomingQuizzes,
+    getQuizSchedule,
 };
