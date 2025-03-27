@@ -55,5 +55,12 @@ router.post(
 // router.get('/:id/statistics', QuizController.getQuizStatistics);
 // router.get('/questions/:id/statistics', QuizController.getQuestionStatistics);
 
+// Add this route to your QuizRoutes.js file
+
+// Get quiz schedule
+router.get('/:quizId/schedule', authenticate, QuizController.getQuizSchedule);
+
+// Make sure the scheduleQuiz route is properly defined
+// router.post('/:quizId/schedule', authenticate, authorizeRoles('Admin'), QuizController.scheduleQuiz);
 
 export default router;

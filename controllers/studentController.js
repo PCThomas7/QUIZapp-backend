@@ -73,7 +73,8 @@ const studentController = {
       });
     }
   },
-  
+
+
   getStudentAnalytics: async (req, res) => {
     try {
       const studentId = req.user._id;

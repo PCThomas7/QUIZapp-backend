@@ -590,6 +590,54 @@ const updateQuestionUsage = async (req, res) => {
   }
 };
 
+const getQuizSchedule = async (req, res) => {
+    try {
+      const { quizId } = req.params;
+      
+      const quiz = await Quiz.findById(quizId)
+        .select('isScheduled startDate endDate');
+      
+      if (!quiz) {
+        return res.status(404).json({
+          message: 'Quiz not found'
+        });
+      }
+      
+      // Calculate status based on current time
+      const now = new Date();
+      const startDate = quiz.startDate ? new Date(quiz.startDate) : null;
+      const endDate = quiz.endDate ? new Date(quiz.endDate) : null;
+      
+      let status = 'AVAILABLE';
+      if (quiz.isScheduled) {
+        if (startDate && now < startDate) {
+          status = 'UPCOMING';
+        } else if (endDate && now > endDate) {
+          status = 'EXPIRED';
+        } else if (startDate && endDate && now >= startDate && now <= endDate) {
+          status = 'ACTIVE';
+        }
+      }
+      
+      res.status(200).json({
+        message: 'Quiz schedule fetched successfully',
+        schedule: {
+          isScheduled: quiz.isScheduled,
+          startDate: quiz.startDate,
+          endDate: quiz.endDate,
+          status
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching quiz schedule:', error);
+      res.status(500).json({
+        message: 'Failed to fetch quiz schedule',
+        error: error.message
+      });
+    }
+  };
+  
+
 // Add this method to your QuizController
 const getDetailedQuizReport = async (req, res) => {
     try {
@@ -876,5 +924,6 @@ export default {
     getDetailedQuizReport,
     assignQuizToBatches,
     getQuizBatches,
-    updateQuestionUsage
+    updateQuestionUsage,
+    getQuizSchedule
 };
