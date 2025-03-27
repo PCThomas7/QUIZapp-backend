@@ -5,6 +5,8 @@ import QuestionBank from '../models/QuestionBank.js';
 import {QuizBatch,Batch} from '../db/db.js'
 import mongoose from 'mongoose';
 
+// Update the createQuiz and updateQuiz methods to handle scheduling data
+
 const createQuiz = async (req, res) => {
     try {
         const { 
@@ -19,7 +21,11 @@ const createQuiz = async (req, res) => {
             sections,
             createdBy,
             batchAssignment,
-            assignedBatches
+            assignedBatches,
+            // Add scheduling fields
+            isScheduled,
+            startDate,
+            endDate
         } = req.body;
 
         // Create new quiz with unique ID
@@ -30,6 +36,10 @@ const createQuiz = async (req, res) => {
             timeLimit: timeLimit || total_duration || 0,
             createdBy,
             batchAssignment: batchAssignment || 'NONE',
+            // Add scheduling fields
+            isScheduled: isScheduled || false,
+            startDate: isScheduled ? startDate : undefined,
+            endDate: isScheduled ? endDate : undefined,
             metadata: {
                 header: header || [],
                 instructions: instructions || [],
@@ -181,6 +191,12 @@ const updateQuiz = async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
+
+        // Handle scheduling data specifically if needed
+        if (updateData.isScheduled === false) {
+            updateData.startDate = undefined;
+            updateData.endDate = undefined;
+        }
 
         const updatedQuiz = await Quiz.findByIdAndUpdate(
             id,
