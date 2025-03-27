@@ -40,7 +40,8 @@ const allowedOrigins = [
     'https://quizapp-fe.vercel.app',
     'https://qui-zapp-backend.vercel.app/',
     'http://localhost:5173',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://quiz-frontend-henna.vercel.app/'
 ];
 
 // Middleware
