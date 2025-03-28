@@ -11,4 +11,9 @@ router.get('/analytics', studentController.getStudentAnalytics);
 router.get('/my-quizzes', authenticate, studentController.getStudentCreatedQuizzes);
 router.delete('/my-quizzes/:id', authenticate, studentController.deleteStudentQuiz);
 
+// Add this route to your existing studentRoutes.js file
+
+// Get upcoming quizzes for a student
+router.get('/quizzes/upcoming', quizController.getUpcomingQuizzes);
+
 export default router;

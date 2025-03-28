@@ -63,4 +63,12 @@ router.get('/:quizId/schedule', authenticate, QuizController.getQuizSchedule);
 // Make sure the scheduleQuiz route is properly defined
 // router.post('/:quizId/schedule', authenticate, authorizeRoles('Admin'), QuizController.scheduleQuiz);
 
+// Add these routes to your existing QuizRoutes.js file
+
+// Schedule a quiz
+router.post('/:quizId/schedule', authenticate, authorizeRoles('Admin'), quizController.scheduleQuiz);
+
+// Get quiz schedule
+router.get('/:quizId/schedule', authenticate, quizController.getQuizSchedule);
+
 export default router;
