@@ -76,12 +76,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import tagRoutes from './routes/TagRoutes.js';
 import QuizRoutes from './routes/QuizRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
-<<<<<<< HEAD
 import communityRoutes from './routes/communityRoutes.js';
-=======
-import calendarRoutes from './routes/calendarRoutes.js';
-import googleAuthRoutes from './routes/googleAuthRoutes.js';
->>>>>>> 86bd6d03f065c5c4b947e8bf5bed7d726d588ae7
 
 // Increase payload size limit
 app.use(express.json({ limit: '10mb' }));
@@ -105,12 +100,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/quizzes', QuizRoutes);
 // Add student routes
 app.use('/api/student', authenticate, authorizeRoles('Student'), studentRoutes);
-<<<<<<< HEAD
 app.use('/api/community', communityRoutes);
-=======
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/google', googleAuthRoutes);
->>>>>>> 86bd6d03f065c5c4b947e8bf5bed7d726d588ae7
 
 // Base route
 app.get('/', (req, res) => {

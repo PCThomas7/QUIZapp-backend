@@ -501,29 +501,7 @@ const getQuizAttemptDetails = async (req, res) => {
   }
 };
 
-// Get quiz schedule
- const getQuizSchedule = async (req, res) => {
-  try {
-    const { quizId } = req.params;
 
-    // Find the quiz
-    const quiz = await Quiz.findById(quizId);
-    if (!quiz) {
-      return res.status(404).json({ message: 'Quiz not found' });
-    }
-
-    // Return scheduling information
-    return res.status(200).json({
-      isScheduled: quiz.isScheduled || false,
-      startDate: quiz.startDate,
-      endDate: quiz.endDate,
-      calendarEventId: quiz.calendarEventId
-    });
-  } catch (error) {
-    console.error('Error fetching quiz schedule:', error);
-    return res.status(500).json({ message: 'Failed to fetch quiz schedule' });
-  }
-};
 
 // Get upcoming quizzes for a student
 export const getUpcomingQuizzes = async (req, res) => {
