@@ -74,7 +74,7 @@ import questionRoutes from './routes/questionRoutes.js';
 import tagRoutes from './routes/TagRoutes.js';
 import QuizRoutes from './routes/QuizRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
-
+import communityRoutes from './routes/communityRoutes.js';
 
 // Increase payload size limit
 app.use(express.json({ limit: '10mb' }));
@@ -98,7 +98,7 @@ app.use('/api/tags', tagRoutes);
 app.use('/api/quizzes', QuizRoutes);
 // Add student routes
 app.use('/api/student', authenticate, authorizeRoles('Student'), studentRoutes);
-
+app.use('/api/community', communityRoutes);
 
 // Base route
 app.get('/', (req, res) => {

@@ -7,7 +7,7 @@ import path from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// File upload configuration for course thumbnails and PDFs
+// File upload configuration for course thumbnails, PDFs, and community attachments
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         let uploadPath = path.join(__dirname, '..', 'uploads/');
@@ -16,6 +16,8 @@ const storage = multer.diskStorage({
             uploadPath = path.join(uploadPath, 'thumbnails/');
         } else if (file.fieldname === 'pdfContent') {
             uploadPath = path.join(uploadPath, 'pdfs/');
+        } else if (file.fieldname === 'attachments') {
+            uploadPath = path.join(uploadPath, 'community/');
         }
         
         // Create directory if it doesn't exist
@@ -45,9 +47,33 @@ const fileFilter = (req, file, cb) => {
         } else {
             cb(new Error('Only PDF files are allowed for lesson content'), false);
         }
+    } else if (file.fieldname === 'attachments') {
+        // Accept images, PDFs, and common document formats for community attachments
+        const allowedMimeTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 
+            'application/pdf',
+            'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' // .xlsx
+        ];
+        
+        if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('File type not allowed for community attachments'), false);
+        }
     } else {
         cb(null, true);
     }
+};
+
+// Helper function to get file URL from saved file
+const getFileUrl = (file) => {
+    if (!file) return null;
+    return `/uploads/${file.fieldname === 'thumbnail' ? 'thumbnails' : 
+            file.fieldname === 'pdfContent' ? 'pdfs' : 
+            file.fieldname === 'attachments' ? 'community' : ''}/${file.filename}`;
 };
 
 const upload = multer({ 
@@ -58,4 +84,4 @@ const upload = multer({
     }
 });
 
-export { upload, storage };
+export { upload, storage, getFileUrl };
